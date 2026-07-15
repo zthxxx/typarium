@@ -13,4 +13,4 @@
 - [x] Euler 渲染：固定底图 + bubblesets 轮廓、never 点阵(∅ pattern)、集合花纹/呼吸描边、any 可拖拽悬浮 badge、hover 类型提示
 - [x] 持久化与分享：IndexedDB 自动保存恢复、URL hash 分享(可选带内容)
 - [x] E2E + 浏览器截图验证循环（教学演示用例全过一遍：协变/逆变/双向协变/Tagged Union）
-- [ ] GitHub Pages 部署 workflow + CNAME(typarium.zthxxx.me) + 最终验收截图
+- [x] GitHub Pages 部署 workflow(手动触发；私有仓库当前套餐不支持 Pages，转 public 后改回 push 触发) + CNAME(typarium.zthxxx.me) + 最终验收截图
