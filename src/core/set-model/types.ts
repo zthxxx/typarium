@@ -101,6 +101,11 @@ export interface SourceSpan {
  * and A ⊆ B among displayed types, the cell also lists B. The layout
  * engine relies on this to place semantically intersecting anchors
  * adjacently (the anti-phantom-intersection invariant).
+ *
+ * Adapters must enforce the closure themselves: raw assignability
+ * queries are NOT transitive in every language (TS method bivariance
+ * breaks transitivity), so witness-membership alone can violate this —
+ * take a fixed point over entity containment edges before emitting.
  */
 export interface Cell {
   id: CellId

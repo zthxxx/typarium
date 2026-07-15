@@ -6,6 +6,9 @@ export default [
   ...tanstackConfig,
   {
     rules: {
+      // The mobx pattern `observer(function Name() {})` intentionally
+      // shadows the exported const to keep component display names.
+      'no-shadow': 'off',
       'import/no-cycle': 'off',
       'import/order': 'off',
       'sort-imports': 'off',

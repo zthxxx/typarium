@@ -1,14 +1,47 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Suspense, lazy } from 'react'
+import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+
+const ClientApp = lazy(() => import('#/views/ClientApp.tsx'))
 
 export const Route = createFileRoute('/')({ component: Home })
 
+/**
+ * The prerendered shell shows a static loading frame; the interactive
+ * app (monaco + analysis worker) mounts client-side only.
+ */
 function Home() {
   return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold">Welcome to TanStack Start</h1>
-      <p className="mt-4 text-lg">
-        Edit <code>src/routes/index.tsx</code> to get started.
-      </p>
+    <ClientOnly fallback={<BootSplash />}>
+      <Suspense fallback={<BootSplash />}>
+        <ClientApp />
+      </Suspense>
+    </ClientOnly>
+  )
+}
+
+function BootSplash() {
+  return (
+    <div className="flex h-[100dvh] flex-col items-center justify-center gap-4">
+      <svg width="72" height="72" viewBox="0 0 28 28" aria-hidden="true">
+        <circle
+          cx="14"
+          cy="14"
+          r="12"
+          fill="none"
+          stroke="#3178c6"
+          strokeWidth="3"
+        />
+        <circle
+          cx="17"
+          cy="16"
+          r="5.5"
+          fill="#f7df1e"
+          stroke="#1b2733"
+          strokeWidth="2"
+        />
+        <circle cx="9.5" cy="11" r="1.8" fill="#1b2733" />
+      </svg>
+      <p className="font-display text-xl font-bold tracking-tight">typarium</p>
     </div>
   )
 }

@@ -18,6 +18,10 @@ export interface LanguageAdapter {
   readonly universe: SetUniverse
   /** Sample snippets for the preset buttons row. */
   readonly presets: Array<LanguagePreset>
+  /** Default source shown on first visit (the teaching demo snippet). */
+  readonly sampleSource: string
+  /** Human-readable engine identity for the footer, e.g. `TypeScript 5.9.3`. */
+  readonly engineLabel: string
 
   analyze: (source: string) => Promise<AnalysisResult>
   /** Hover support for canvas labels, mirroring the editor's LSP hover. */

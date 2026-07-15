@@ -38,6 +38,8 @@
     ]
   },
   "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/outfit": "^5.2.8",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "^0.10.8",
     "@tanstack/react-router": "^1.170.18",

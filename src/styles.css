@@ -1,4 +1,32 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/outfit';
+@import '@fontsource-variable/jetbrains-mono';
+
+/*
+ * Design tokens (ADR-0009): chrome uses the TypeScript brand family,
+ * set regions use the semi-color-tag categorical palette (12 hues x
+ * 4 alpha steps) mapped by the layout engine's colorIndex.
+ * One theme (light) is locked page-wide: the canvas is an artboard.
+ */
+@theme {
+  --font-display: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  /* Chrome */
+  --color-brand: #3178c6; /* TypeScript blue */
+  --color-brand-deep: #235a97;
+  --color-spark: #f7df1e; /* JS yellow, highlight/selection only */
+  --color-paper: #f7fafd; /* app background, cold off-white */
+  --color-board: #fdfefe; /* canvas artboard */
+  --color-ink: #1b2733;
+  --color-ink-soft: #5b6b7b;
+  --color-line: #d8e2ec;
+  --color-warn-any: #ff4d30; /* any badge, orange-red */
+
+  /* Game-feel structure */
+  --radius-chunky: 14px;
+  --radius-pill: 999px;
+}
 
 * {
   box-sizing: border-box;
@@ -12,4 +40,75 @@ body,
 
 body {
   margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+}
+
+/*
+ * Set-region palette: semi-color-tag hues (ADR-0009).
+ * Step 1 (0.2 alpha) = region fill base, step 3 (solid) = region stroke.
+ * The layout engine emits colorIndex; views resolve via these variables.
+ */
+:root {
+  --set-hue-0-fill: rgba(87, 137, 255, 0.16);
+  --set-hue-0-stroke: rgb(87, 137, 255);
+  --set-hue-1-fill: rgba(2, 162, 140, 0.16);
+  --set-hue-1-stroke: rgb(2, 162, 140);
+  --set-hue-2-fill: rgba(219, 146, 0, 0.16);
+  --set-hue-2-stroke: rgb(178, 137, 0);
+  --set-hue-3-fill: rgba(239, 87, 173, 0.14);
+  --set-hue-3-stroke: rgb(239, 87, 173);
+  --set-hue-4-fill: rgba(124, 132, 238, 0.16);
+  --set-hue-4-stroke: rgb(124, 132, 238);
+  --set-hue-5-fill: rgba(27, 167, 12, 0.14);
+  --set-hue-5-stroke: rgb(27, 167, 12);
+  --set-hue-6-fill: rgba(250, 133, 0, 0.14);
+  --set-hue-6-stroke: rgb(219, 117, 0);
+  --set-hue-7-fill: rgba(165, 113, 254, 0.14);
+  --set-hue-7-stroke: rgb(165, 113, 254);
+  --set-hue-8-fill: rgba(0, 175, 240, 0.14);
+  --set-hue-8-stroke: rgb(3, 155, 211);
+  --set-hue-9-fill: rgba(222, 89, 222, 0.13);
+  --set-hue-9-stroke: rgb(222, 89, 222);
+  --set-hue-10-fill: rgba(149, 178, 0, 0.14);
+  --set-hue-10-stroke: rgb(149, 178, 0);
+  --set-hue-11-fill: rgba(247, 85, 80, 0.13);
+  --set-hue-11-stroke: rgb(247, 85, 80);
+}
+
+/*
+ * Breathing contour animation (ADR-0005 adjacent): a gentle dash-flow
+ * plus scale pulse on set strokes. Amplitude is deliberately small;
+ * the layout never moves, only the ink "breathes".
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .set-contour {
+    animation: contour-breathe 4.2s ease-in-out infinite;
+  }
+  .set-contour-flow {
+    stroke-dasharray: 10 6;
+    animation: contour-flow 2.6s linear infinite;
+  }
+  @keyframes contour-breathe {
+    0%,
+    100% {
+      stroke-width: var(--contour-width, 3px);
+    }
+    50% {
+      stroke-width: calc(var(--contour-width, 3px) + 1.2px);
+    }
+  }
+  @keyframes contour-flow {
+    to {
+      stroke-dashoffset: -32;
+    }
+  }
+}
+
+/* Focus visibility: game-feel thick focus ring in brand color */
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-brand) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
