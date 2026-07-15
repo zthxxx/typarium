@@ -72,7 +72,11 @@ export const EulerCanvas = observer(function EulerCanvas() {
           </g>
           <g>
             {layout.anchors.map((anchor) => (
-              <AnchorView key={anchor.cellId} anchor={anchor} />
+              <AnchorView
+                key={anchor.cellId}
+                anchor={anchor}
+                uncertainHint={settings.t('canvas.unknownOverlapHint')}
+              />
             ))}
           </g>
           <g>
@@ -373,7 +377,13 @@ function ContourLabel({
   )
 }
 
-function AnchorView({ anchor }: { anchor: CellAnchor }) {
+function AnchorView({
+  anchor,
+  uncertainHint,
+}: {
+  anchor: CellAnchor
+  uncertainHint: string
+}) {
   if (anchor.cellKind === 'domain-full') return null
   if (anchor.shape.kind !== 'circle') return null
   const { cx, cy, radius } = anchor.shape
@@ -405,7 +415,8 @@ function AnchorView({ anchor }: { anchor: CellAnchor }) {
 
   if (anchor.uncertain) {
     return (
-      <g>
+      <g style={{ cursor: 'help' }}>
+        <title>{uncertainHint}</title>
         <circle
           cx={cx}
           cy={cy}
