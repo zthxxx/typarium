@@ -101,6 +101,25 @@ export interface EntityContour {
   labelPos: LabeledPoint
 }
 
+/**
+ * Single source of truth for contour-label pill geometry: the layout
+ * engine uses it for collision resolution, the renderer for drawing.
+ */
+export const LABEL_METRICS = {
+  height: 26,
+  charWidth: 8.6,
+  paddingX: 18,
+  minWidth: 34,
+  gap: 6,
+} as const
+
+export function labelBoxWidth(text: string): number {
+  return Math.max(
+    LABEL_METRICS.minWidth,
+    text.length * LABEL_METRICS.charWidth + LABEL_METRICS.paddingX,
+  )
+}
+
 export interface LayoutResult {
   /** The universe frame — the canvas border region representing `unknown`. */
   universeFrame: RectShape

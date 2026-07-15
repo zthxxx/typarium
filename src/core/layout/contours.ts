@@ -2,6 +2,7 @@ import { BubbleSets, circle, rect } from 'bubblesets-js'
 import type { ICircle, IRectangle } from 'bubblesets-js'
 import type { Cell, EntityId, TypeEntity } from '#/core/set-model/types.ts'
 import type { Basemap } from '#/core/layout/basemap.ts'
+import { LABEL_METRICS, labelBoxWidth } from '#/core/layout/types.ts'
 import type {
   CellAnchor,
   EntityContour,
@@ -105,6 +106,9 @@ export function computeContours(
     for (const obstacle of untouchedFrameObstacles(basemap, memberAnchors)) {
       bubbles.pushNonMember(obstacle)
     }
+    for (const guard of exteriorGuardStrips(basemap, memberAnchors)) {
+      bubbles.pushNonMember(guard)
+    }
 
     const rawPath = bubbles.compute()
     const smooth = rawPath.sample(8).simplify(0).bSplines()
@@ -142,7 +146,55 @@ export function computeContours(
     })
   }
 
+  resolveLabelCollisions(contours, basemap)
+
   return { contours, warnings }
+}
+
+/**
+ * Greedy de-collision for label pills: labels whose boxes overlap are
+ * pushed downward until free, then clamped inside the universe frame.
+ * Deterministic: processing order is the stable contour draw order.
+ */
+function resolveLabelCollisions(
+  contours: Array<EntityContour>,
+  basemap: Basemap,
+): void {
+  const placed: Array<{ x: number; y: number; width: number; height: number }> =
+    []
+  const frame = basemap.universeFrame
+  const { height, gap } = LABEL_METRICS
+
+  for (const contour of contours) {
+    const width = labelBoxWidth(contour.labels.join(' ≡ '))
+    const minX = frame.x + width / 2 + gap
+    const maxX = frame.x + frame.width - width / 2 - gap
+    const minY = frame.y + height / 2 + gap
+    const maxY = frame.y + frame.height - height / 2 - gap
+
+    let x = Math.min(Math.max(contour.labelPos.x, minX), maxX)
+    let y = Math.min(Math.max(contour.labelPos.y, minY), maxY)
+
+    const overlaps = (cx: number, cy: number) =>
+      placed.some(
+        (box) =>
+          Math.abs(cx - box.x) < (width + box.width) / 2 + gap &&
+          Math.abs(cy - box.y) < (height + box.height) / 2 + gap,
+      )
+
+    let attempts = 0
+    while (overlaps(x, y) && attempts < 40) {
+      y += height + gap
+      if (y > maxY) {
+        y = minY
+        x = Math.min(x + width / 2 + gap, maxX)
+      }
+      attempts += 1
+    }
+
+    placed.push({ x, y, width, height })
+    contour.labelPos = { x, y }
+  }
 }
 
 function toBubbleShape(shape: Shape, padding: number): IRectangle | ICircle {
@@ -201,6 +253,61 @@ function untouchedFrameObstacles(
     }
   }
   return obstacles
+}
+
+/**
+ * A contour whose members all live in ONE domain must not bulge outside
+ * that domain's border into the empty corridor (values out there are
+ * not part of the domain — a subtle phantom region). A thin ring of
+ * obstacle strips just outside the frame keeps the outline inside.
+ * Multi-domain entities skip the guards: their contours legitimately
+ * bridge the corridors (e.g. `string | number`).
+ */
+function exteriorGuardStrips(
+  basemap: Basemap,
+  memberAnchors: Array<CellAnchor>,
+): Array<IRectangle | ICircle> {
+  const touchedDomains = new Set(memberAnchors.map((anchor) => anchor.domain))
+  if (touchedDomains.size !== 1) return []
+  const domainId = [...touchedDomains][0]
+  const frame = basemap.frames.find((candidate) => candidate.id === domainId)
+  if (!frame) return []
+
+  const bounds = boundsOf(frame.shape)
+  const gap = 6
+  const thickness = 12
+  const x = bounds.x - gap - thickness
+  const y = bounds.y - gap - thickness
+  const width = bounds.width + (gap + thickness) * 2
+  const height = bounds.height + (gap + thickness) * 2
+  return [
+    rect(x, y, width, thickness),
+    rect(x, bounds.y + bounds.height + gap, width, thickness),
+    rect(x, y + thickness, thickness, height - thickness * 2),
+    rect(
+      bounds.x + bounds.width + gap,
+      y + thickness,
+      thickness,
+      height - thickness * 2,
+    ),
+  ]
+}
+
+function boundsOf(shape: Shape): {
+  x: number
+  y: number
+  width: number
+  height: number
+} {
+  if (shape.kind === 'circle') {
+    return {
+      x: shape.cx - shape.radius,
+      y: shape.cy - shape.radius,
+      width: shape.radius * 2,
+      height: shape.radius * 2,
+    }
+  }
+  return { x: shape.x, y: shape.y, width: shape.width, height: shape.height }
 }
 
 function labelPosition(memberAnchors: Array<CellAnchor>): LabeledPoint {

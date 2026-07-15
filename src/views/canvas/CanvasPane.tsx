@@ -83,7 +83,7 @@ const PresetsBar = observer(function PresetsBar({
 function HoverCard({ x, y, text }: { x: number; y: number; text: string }) {
   return (
     <div
-      className="pointer-events-none absolute z-20 max-w-[420px] rounded-lg border-2 border-(--color-line) bg-white px-3 py-2 shadow-[3px_3px_0_rgba(27,39,51,0.12)]"
+      className="pointer-events-none absolute z-20 max-w-[420px] rounded-lg border-2 border-(--color-ink) bg-white px-3 py-2 shadow-[4px_4px_0_rgba(27,39,51,0.18)]"
       style={{ left: x + 14, top: y + 14 }}
     >
       <pre className="overflow-hidden font-mono text-xs leading-relaxed whitespace-pre-wrap text-(--color-ink)">

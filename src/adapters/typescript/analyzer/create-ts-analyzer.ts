@@ -131,10 +131,34 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
 
   const quickInfo = (source: string, position: number): string | null => {
     setMain(source)
-    const info = env.languageService.getQuickInfoAtPosition(MAIN_FILE, position)
-    if (!info || !info.displayParts) return null
-    const text = info.displayParts.map((part) => part.text).join('')
-    return text.length > 0 ? text : null
+    const read = (at: number): string | null => {
+      const info = env.languageService.getQuickInfoAtPosition(MAIN_FILE, at)
+      if (!info || !info.displayParts) return null
+      const text = info.displayParts.map((part) => part.text).join('')
+      return text.length > 0 ? text : null
+    }
+
+    const direct = read(position)
+    if (direct !== null) return direct
+
+    // Callers often pass a declaration's start (the `export` keyword),
+    // which carries no quick info — retry at the declaration NAME.
+    const program = env.languageService.getProgram()
+    const file = program?.getSourceFile(MAIN_FILE)
+    if (!file) return null
+    for (const statement of file.statements) {
+      if (position < statement.getStart(file) || position >= statement.end) {
+        continue
+      }
+      if (
+        ts.isTypeAliasDeclaration(statement) ||
+        ts.isInterfaceDeclaration(statement) ||
+        ts.isEnumDeclaration(statement)
+      ) {
+        return read(statement.name.getStart(file))
+      }
+    }
+    return null
   }
 
   const dispose = () => {

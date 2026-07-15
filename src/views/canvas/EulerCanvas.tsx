@@ -5,6 +5,7 @@ import {
 } from '#/services/visualization.store.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { useService } from '#/views/di.tsx'
+import { LABEL_METRICS, labelBoxWidth } from '#/core/layout/types.ts'
 import type {
   CellAnchor,
   DomainFrame,
@@ -28,7 +29,8 @@ export const EulerCanvas = observer(function EulerCanvas() {
   return (
     <svg
       viewBox={`0 0 ${LOGICAL_VIEWPORT.width} ${LOGICAL_VIEWPORT.height}`}
-      className="h-auto w-full min-w-[720px] select-none"
+      className="h-full w-full min-w-[720px] select-none"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Euler diagram of exported TypeScript types"
     >
@@ -338,7 +340,7 @@ function ContourLabel({
 }) {
   const hue = contour.colorIndex % HUE_COUNT
   const text = contour.labels.join(' ≡ ')
-  const width = Math.max(34, text.length * 8.6 + 18)
+  const width = labelBoxWidth(text)
   return (
     <g
       transform={`translate(${contour.labelPos.x}, ${contour.labelPos.y})`}
@@ -348,10 +350,10 @@ function ContourLabel({
     >
       <rect
         x={-width / 2}
-        y={-14}
+        y={-LABEL_METRICS.height / 2 - 1}
         width={width}
-        height={26}
-        rx={13}
+        height={LABEL_METRICS.height}
+        rx={LABEL_METRICS.height / 2}
         fill="white"
         stroke={`var(--set-hue-${hue}-stroke)`}
         strokeWidth={2.5}
@@ -440,7 +442,12 @@ function NeverLegend({
   text: string
 }) {
   const label = `${names.join(' ≡ ')} = ${text}`
-  const width = Math.min(frame.width - 40, label.length * 7.6 + 24)
+  // CJK glyphs are roughly twice as wide as ASCII at this font size.
+  const textWidth = [...label].reduce(
+    (sum, char) => sum + (char.charCodeAt(0) > 0x2e80 ? 13 : 7.6),
+    0,
+  )
+  const width = Math.min(frame.width - 40, textWidth + 28)
   return (
     <g transform={`translate(${frame.x + 20}, ${frame.y + frame.height - 44})`}>
       <rect

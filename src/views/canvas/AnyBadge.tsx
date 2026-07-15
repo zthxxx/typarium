@@ -32,7 +32,13 @@ export const AnyBadge = observer(function AnyBadge() {
       style={
         position
           ? { left: position.x, top: position.y, rotate: '-14deg' }
-          : { left: '50%', top: '96px', translate: '-50% 0', rotate: '-14deg' }
+          : // Default spot straddles the canvas/editor divider (the main
+            // split is 58/42): visually "not inside the diagram plane".
+            {
+              left: 'calc(58% - 40px)',
+              top: '108px',
+              rotate: '-14deg',
+            }
       }
       onPointerEnter={() => setShowTip(true)}
       onPointerLeave={() => setShowTip(false)}

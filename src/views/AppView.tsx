@@ -35,6 +35,12 @@ export function AppView({ adapter }: { adapter: LanguageAdapter }) {
 
   useEffect(() => {
     void bootstrapContent(container, adapter)
+    // Debug/e2e probe: stable access to services without UI coupling.
+    ;(window as unknown as Record<string, unknown>).__typarium = {
+      analysis: container.get(AnalysisService),
+      editor: container.get(EditorService),
+      viz: container.get(VisualizationStore),
+    }
   }, [container, adapter])
 
   return (

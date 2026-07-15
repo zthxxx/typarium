@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { EditorService } from '#/services/editor.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { useService } from '#/views/di.tsx'
-import type * as Monaco from 'monaco-editor'
+import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 
 /**
  * Monaco integration, client-only (mounted under <ClientOnly>).
@@ -83,21 +83,33 @@ export const MonacoEditor = observer(function MonacoEditor() {
   )
 })
 
-let monacoSetup: Promise<typeof Monaco> | null = null
+let monacoSetup: Promise<MonacoApi> | null = null
+
+type MonacoApi = typeof Monaco
 
 /**
  * One-time monaco boot: worker wiring (Vite `?worker` imports), strict
  * compiler options (product rule: strict check always on), and the
  * typarium editor theme.
  */
-function setupMonaco(): Promise<typeof Monaco> {
+function setupMonaco(): Promise<MonacoApi> {
   monacoSetup ??= (async () => {
-    const [monaco, { default: EditorWorker }, { default: TsWorker }] =
-      await Promise.all([
-        import('monaco-editor'),
-        import('monaco-editor/esm/vs/editor/editor.worker.js?worker'),
-        import('monaco-editor/esm/vs/language/typescript/ts.worker.js?worker'),
-      ])
+    // Slim monaco assembly: full-featured editor core (edcore) plus the
+    // TypeScript language only — the root `monaco-editor` entry drags in
+    // every language contribution (~15MB of lazy chunks in the artifact).
+    const [
+      monaco,
+      tsContribution,
+      ,
+      { default: EditorWorker },
+      { default: TsWorker },
+    ] = await Promise.all([
+      import('monaco-editor/esm/vs/editor/edcore.main.js'),
+      import('monaco-editor/esm/vs/language/typescript/monaco.contribution.js'),
+      import('monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js'),
+      import('monaco-editor/esm/vs/editor/editor.worker.js?worker'),
+      import('monaco-editor/esm/vs/language/typescript/ts.worker.js?worker'),
+    ])
 
     self.MonacoEnvironment = {
       getWorker(_workerId: string, label: string) {
@@ -108,9 +120,9 @@ function setupMonaco(): Promise<typeof Monaco> {
       },
     }
 
-    // monaco 0.55 ships the runtime `languages.typescript` namespace
-    // (editor.main.js assigns it) but types it as a deprecated stub —
-    // narrow-cast to the surface we actually use.
+    // monaco 0.55 types the `languages.typescript` namespace as a
+    // deprecated stub; with the slim edcore assembly we consume the
+    // contribution module's exports directly through a narrow cast.
     interface TsLanguageApi {
       typescriptDefaults: {
         setCompilerOptions: (options: Record<string, unknown>) => void
@@ -118,9 +130,7 @@ function setupMonaco(): Promise<typeof Monaco> {
       ScriptTarget: Record<string, number>
       ModuleResolutionKind: Record<string, number>
     }
-    const tsLanguage = (
-      monaco.languages as unknown as { typescript: TsLanguageApi }
-    ).typescript
+    const tsLanguage = tsContribution as unknown as TsLanguageApi
 
     tsLanguage.typescriptDefaults.setCompilerOptions({
       strict: true,

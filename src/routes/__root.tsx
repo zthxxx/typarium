@@ -13,7 +13,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'typarium — TypeScript types, drawn as sets',
+        title: 'typarium · TypeScript types, drawn as sets',
       },
       {
         name: 'description',
