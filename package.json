@@ -91,5 +91,6 @@
       "lightningcss",
       "simple-git-hooks"
     ]
-  }
+  },
+  "packageManager": "pnpm@9.15.9"
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import { EditorService } from '#/services/editor.service.ts'
+import { VisualizationStore } from '#/services/visualization.store.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { useService } from '#/views/di.tsx'
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
@@ -15,6 +16,7 @@ import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 export const MonacoEditor = observer(function MonacoEditor() {
   const editorService = useService(EditorService)
   const settings = useService(SettingsService)
+  const viz = useService(VisualizationStore)
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const suppressChangeRef = useRef(false)
@@ -47,6 +49,12 @@ export const MonacoEditor = observer(function MonacoEditor() {
       editor.onDidChangeModelContent(() => {
         if (suppressChangeRef.current) return
         editorService.setCode(model.getValue())
+      })
+
+      // Bidirectional highlight: caret inside an exported declaration
+      // lights up its contour on the canvas.
+      editor.onDidChangeCursorPosition((event) => {
+        viz.setCursorOffset(model.getOffsetAt(event.position))
       })
 
       editorRef.current = editor

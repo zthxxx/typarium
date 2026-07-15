@@ -32,7 +32,7 @@ export const AppHeader = observer(function AppHeader({
 
       <div className="ml-auto flex items-center gap-2.5">
         <label className="flex items-center gap-1.5 text-sm">
-          <span className="text-(--color-ink-soft)">
+          <span className="hidden text-(--color-ink-soft) sm:inline">
             {settings.t('header.language')}
           </span>
           <select
@@ -49,7 +49,7 @@ export const AppHeader = observer(function AppHeader({
 
         <button
           type="button"
-          className="rounded-full border-2 border-(--color-line) bg-white px-3 py-1 font-mono text-xs font-semibold transition-transform active:scale-[0.96]"
+          className="rounded-full border-2 border-(--color-line) bg-white px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap transition-transform active:scale-[0.96]"
           onClick={() => {
             settings.setLocale(settings.locale === 'zh' ? 'en' : 'zh')
           }}
@@ -60,7 +60,7 @@ export const AppHeader = observer(function AppHeader({
         <div className="relative">
           <button
             type="button"
-            className="rounded-full bg-(--color-brand) px-4 py-1.5 text-sm font-semibold text-white shadow-[0_2px_0_var(--color-brand-deep)] transition-transform active:translate-y-[1px] active:shadow-none"
+            className="rounded-full bg-(--color-brand) px-4 py-1.5 text-sm font-semibold whitespace-nowrap text-white shadow-[0_2px_0_var(--color-brand-deep)] transition-transform active:translate-y-[1px] active:shadow-none"
             onClick={() => setShareOpen((open) => !open)}
           >
             {settings.t('header.share')}

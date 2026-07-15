@@ -60,12 +60,12 @@ export const EulerCanvas = observer(function EulerCanvas() {
                 key={contour.key}
                 contour={contour}
                 dimmed={
-                  viz.hoveredEntityId !== null &&
-                  !contour.entityIds.includes(viz.hoveredEntityId)
+                  viz.activeEntityId !== null &&
+                  !contour.entityIds.includes(viz.activeEntityId)
                 }
                 highlighted={
-                  viz.hoveredEntityId !== null &&
-                  contour.entityIds.includes(viz.hoveredEntityId)
+                  viz.activeEntityId !== null &&
+                  contour.entityIds.includes(viz.activeEntityId)
                 }
               />
             ))}
