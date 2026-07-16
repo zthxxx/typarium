@@ -90,20 +90,28 @@ export const AnyBadge = observer(function AnyBadge() {
         dragState.current = null
       }}
     >
-      {/* Drifting cloud visual: puffs + irregular outline + hard color shadow */}
-      <span className="cloud-float relative block rotate-[-12deg]">
+      {/* Drifting sticker: a rounded rect whose edges wobble via a fixed
+          turbulence displacement (roughly-cut-sticker look); the label sits
+          on an unfiltered layer so the text itself stays crisp. */}
+      <span className="cloud-float relative block rotate-[-10deg]">
+        <svg aria-hidden="true" width="0" height="0" className="absolute">
+          <filter id="any-wobble" x="-25%" y="-25%" width="150%" height="150%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.055"
+              numOctaves="2"
+              seed="7"
+              result="noise"
+            />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="9" />
+          </filter>
+        </svg>
         <span
           aria-hidden="true"
-          className="absolute -top-2.5 left-3.5 h-5 w-5 rounded-full border-[3px] border-white bg-(--color-warn-any)"
+          className="absolute inset-0 rounded-xl border-[3px] border-white bg-(--color-warn-any) shadow-[0_8px_0_rgba(255,77,48,0.35),0_14px_28px_rgba(255,77,48,0.55)]"
+          style={{ filter: 'url(#any-wobble)' }}
         />
-        <span
-          aria-hidden="true"
-          className="absolute -top-1.5 right-4 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-(--color-warn-any)"
-        />
-        <span
-          className="relative block border-[3px] border-white bg-(--color-warn-any) px-5 py-1.5 font-mono text-lg font-bold text-white shadow-[0_8px_0_rgba(255,77,48,0.35),0_14px_28px_rgba(255,77,48,0.55)]"
-          style={{ borderRadius: '46% 54% 52% 48% / 58% 62% 38% 42%' }}
-        >
+        <span className="relative block px-6 py-2 font-mono text-lg font-bold text-white">
           {settings.t('anyBadge.label')}
         </span>
       </span>
