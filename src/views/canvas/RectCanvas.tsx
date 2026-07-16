@@ -100,7 +100,7 @@ export const RectCanvas = observer(function RectCanvas() {
             height: placeholder.box.height,
             // Half the weight of entity borders: this block is a hint,
             // not a set — fixed light gray, never from the palette.
-            border: '1.5px solid rgba(100, 106, 115, 0.45)',
+            border: '2px dashed rgba(100, 106, 115, 0.55)',
             background: 'rgba(143, 149, 158, 0.08)',
           }}
         >
