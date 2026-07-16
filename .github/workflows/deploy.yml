@@ -1,10 +1,10 @@
 name: Deploy Pages
 
-# GitHub Pages is unavailable for private repos on the current plan
-# (API returns 422 "plan does not support"). Keep the deploy manual-only
-# so CI stays green; switch the trigger back to `push: branches: [main]`
-# once the repo goes public or the plan supports private Pages.
+# Every push to main ships dist/client to GitHub Pages;
+# workflow_dispatch is kept for manual re-runs.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
