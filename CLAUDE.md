@@ -11,14 +11,13 @@ decision records — check them before revisiting any settled choice.
 - Dependency direction: `core` ← `adapters` ← `services` ← `views`,
   inward only. `core/` must not import adapters, services, views, or
   the `typescript` package.
-- The `typescript` dependency is pinned exact (5.9.x): the in-browser
-  analysis engine needs the JS compiler API, which ends at 5.9 (ADR-0002,
-  ADR-0011). monaco-editor embeds the same version — keep them aligned
-  when upgrading either.
-- Visualization must never draw a lying diagram: `Cell.members` is
-  upward-closed (adapters enforce a fixed-point closure — method
-  bivariance breaks assignability transitivity), and layout keeps the
-  anti-phantom-intersection invariant (ADR-0010).
+- The `typescript` dependency is pinned exact (6.0.3): the SINGLE
+  TypeScript resource in the bundle (ADR-0015). One analysis worker
+  powers canvas semantics AND editor diagnostics/hover/completions;
+  monaco's embedded TS worker is never loaded — do not reintroduce it.
+- Visualization expresses CONTAINMENT ONLY (ADR-0012): rectangles nest
+  or sit apart, no partial-overlap geometry. The rect layout must stay
+  deterministic — same input, same output, zero randomness.
 - Every commit passes: `pnpm check && pnpm lint && pnpm typecheck &&
 pnpm test`; run `pnpm test:e2e` for behavior-touching changes.
   Conventional commits enforced by commitlint (lowercase subject start).
