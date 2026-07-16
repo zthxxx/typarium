@@ -8,8 +8,6 @@ import type { PersistenceService } from '#/services/persistence.service.ts'
 const ANALYZE_DEBOUNCE_MS = 1_200
 /** Squiggles should feel editor-grade: check runs well before analysis. */
 const CHECK_DEBOUNCE_MS = 350
-/** One deferred re-check after type acquisition has had time to land. */
-const ACQUISITION_RETRY_MS = 5_000
 /** Saves are cheaper than analysis; persist keystrokes almost immediately. */
 const SAVE_DEBOUNCE_MS = 300
 
@@ -22,11 +20,12 @@ export class EditorService {
   code = ''
   /** Live editor diagnostics (fast check pass), consumed by monaco markers. */
   editorDiagnostics: Array<SourceDiagnostic> = []
+  /** An analyze pass is debounce-queued (edit made, waiting for idle). */
+  analyzeQueued = false
 
   private analyzeTimer: ReturnType<typeof setTimeout> | null = null
   private checkTimer: ReturnType<typeof setTimeout> | null = null
   private checkTicket = 0
-  private retriedForCode: string | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private virtualTypesGetter: () => Array<VirtualType> = () => []
   private activePresetsGetter: () => Array<string> = () => []
@@ -42,7 +41,6 @@ export class EditorService {
       | 'analyzeTimer'
       | 'checkTimer'
       | 'checkTicket'
-      | 'retriedForCode'
       | 'saveTimer'
       | 'virtualTypesGetter'
       | 'activePresetsGetter'
@@ -52,10 +50,20 @@ export class EditorService {
       analyzeTimer: false,
       checkTimer: false,
       checkTicket: false,
-      retriedForCode: false,
       saveTimer: false,
       virtualTypesGetter: false,
       activePresetsGetter: false,
+    })
+
+    // Typings can land AFTER a check/analyze pass raced past the
+    // acquisition batch (the batch dedupes on specifier, so only the
+    // first caller waits). Re-run both passes against the same code
+    // the moment the typings actually arrive — this is what makes
+    // pasted import-bearing code refresh the canvas with no further
+    // keystroke.
+    this.analysis.onTypesAcquired(() => {
+      this.scheduleCheck()
+      void this.analysis.analyze(this.code, this.virtualTypesGetter())
     })
   }
 
@@ -87,9 +95,21 @@ export class EditorService {
   /** Virtual preset toggles re-analyze immediately (no typing involved). */
   analyzeNow(): void {
     if (this.analyzeTimer) clearTimeout(this.analyzeTimer)
+    this.analyzeTimer = null
+    this.analyzeQueued = false
     this.scheduleSave()
     this.scheduleCheck()
     void this.analysis.analyze(this.code, this.virtualTypesGetter())
+  }
+
+  /**
+   * Run a queued analyze immediately instead of waiting out the idle
+   * debounce (ESC = "I'm done editing, show me"). No-op when nothing
+   * is queued.
+   */
+  flushPendingAnalyze(): void {
+    if (!this.analyzeTimer) return
+    this.analyzeNow()
   }
 
   /** Format the whole document with the user's style options. */
@@ -139,27 +159,18 @@ export class EditorService {
         runInAction(() => {
           this.editorDiagnostics = diagnostics
         })
-        // Type acquisition may land after this pass: unresolved-module
-        // diagnostics get ONE deferred re-run so freshly fetched types
-        // clear the squiggles and join the canvas without a keystroke.
-        const unresolved = diagnostics.some((diagnostic) =>
-          diagnostic.message.includes('Cannot find module'),
-        )
-        if (unresolved && this.retriedForCode !== source) {
-          this.retriedForCode = source
-          setTimeout(() => {
-            if (this.code !== source) return
-            this.scheduleCheck()
-            void this.analysis.analyze(source, this.virtualTypesGetter())
-          }, ACQUISITION_RETRY_MS)
-        }
       })
     }, CHECK_DEBOUNCE_MS)
   }
 
   private scheduleAnalyze(): void {
     if (this.analyzeTimer) clearTimeout(this.analyzeTimer)
+    this.analyzeQueued = true
     this.analyzeTimer = setTimeout(() => {
+      runInAction(() => {
+        this.analyzeQueued = false
+      })
+      this.analyzeTimer = null
       void this.analysis.analyze(this.code, this.virtualTypesGetter())
     }, ANALYZE_DEBOUNCE_MS)
   }

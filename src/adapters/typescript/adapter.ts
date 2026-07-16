@@ -1,4 +1,4 @@
-import { wrap } from 'comlink'
+import { proxy, wrap } from 'comlink'
 import { FIXED_COMPILER_OPTIONS_DISPLAY } from '#/adapters/typescript/compiler-options-display.ts'
 import { typescriptPresets } from '#/adapters/typescript/presets.ts'
 import type { Remote } from 'comlink'
@@ -55,6 +55,9 @@ export function createTypescriptAdapter(): LanguageAdapter {
       remote.completions(source, offset, preferences),
     format: (source, options) => remote.format(source, options),
     twoslashQueries: (source) => remote.twoslashQueries(source),
+    onTypesAcquired: (listener) => {
+      void remote.onTypesAcquired(proxy(listener))
+    },
     dispose: () => worker.terminate(),
   }
 }

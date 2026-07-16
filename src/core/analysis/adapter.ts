@@ -50,6 +50,12 @@ export interface LanguageAdapter {
   format: (source: string, options: FormatOptions) => Promise<string>
   /** Twoslash `// ^?` query results for inline type display. */
   twoslashQueries: (source: string) => Promise<Array<TwoslashQuery>>
+  /**
+   * Subscribe to late type-acquisition arrivals: typings landed after
+   * some check/analyze pass already ran without them, so those passes
+   * should be re-run against the same source.
+   */
+  onTypesAcquired: (listener: () => void) => void
   dispose: () => void
 }
 

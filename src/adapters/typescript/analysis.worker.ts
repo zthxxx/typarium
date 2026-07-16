@@ -23,6 +23,7 @@ const libModules = import.meta.glob('/node_modules/typescript/lib/lib.*.d.ts', {
 
 let analyzerPromise: Promise<TsAnalyzer> | null = null
 let acquirer: TypeAcquirer | null = null
+let typesAcquiredListener: (() => void) | null = null
 
 function getAnalyzer(): Promise<TsAnalyzer> {
   analyzerPromise ??= (async () => {
@@ -36,6 +37,7 @@ function getAnalyzer(): Promise<TsAnalyzer> {
     const analyzer = createTsAnalyzer({ libFiles })
     acquirer = createTypeAcquirer({
       receiveFile: (path, content) => analyzer.addLibraryFile(path, content),
+      onAcquired: () => typesAcquiredListener?.(),
     })
     return analyzer
   })()
@@ -50,6 +52,14 @@ async function withTypes(source: string): Promise<TsAnalyzer> {
 }
 
 const api = {
+  /**
+   * Register the main-thread callback fired when type acquisition
+   * delivers typings AFTER some computation already ran without them
+   * (comlink-proxied function).
+   */
+  onTypesAcquired(listener: () => void) {
+    typesAcquiredListener = listener
+  },
   async analyze(source: string, virtualTypes: Array<VirtualType>) {
     return (await withTypes(source)).analyze(source, virtualTypes)
   },

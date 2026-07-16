@@ -71,6 +71,23 @@ export const MonacoEditor = observer(function MonacoEditor() {
         viz.clearCursor()
       })
 
+      // ESC = "I'm done editing": blur the editor (restores canvas
+      // highlight via the blur handler above) and run any queued
+      // analysis immediately instead of waiting out the idle debounce.
+      // The context guard keeps ESC's native monaco duties (closing
+      // suggest/find widgets) working.
+      editor.addCommand(
+        monaco.KeyCode.Escape,
+        () => {
+          editorService.flushPendingAnalyze()
+          editor.getDomNode()?.blur()
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur()
+          }
+        },
+        '!suggestWidgetVisible && !findWidgetVisible && !parameterHintsVisible',
+      )
+
       // Language features backed by the single analysis worker.
       disposables.push(
         monaco.languages.registerHoverProvider('typescript', {

@@ -66,6 +66,11 @@ export class AnalysisService {
     return this.adapter.twoslashQueries(source)
   }
 
+  /** Late type-acquisition arrivals (see LanguageAdapter contract). */
+  onTypesAcquired(listener: () => void): void {
+    this.adapter.onTypesAcquired(listener)
+  }
+
   async analyze(
     source: string,
     virtualTypes: Array<VirtualType>,

@@ -35,6 +35,8 @@ const en = {
   'editor.resize': 'Drag to resize editor',
   'editor.loading': 'Loading editor…',
   'footer.engine': 'Type analysis engine: {version}',
+  'footer.computing': 'Computing…',
+  'footer.analyzing': 'Analyzing set relations…',
 } as const
 
 export type MessageKey = keyof typeof en
@@ -67,6 +69,8 @@ const zh: Record<MessageKey, string> = {
   'editor.resize': '拖拽调整编辑器宽度',
   'editor.loading': '编辑器加载中…',
   'footer.engine': '类型分析引擎：{version}',
+  'footer.computing': '计算中…',
+  'footer.analyzing': '计算集合关系中…',
 }
 
 export const dictionaries: Record<Locale, Record<MessageKey, string>> = {

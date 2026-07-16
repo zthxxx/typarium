@@ -21,9 +21,17 @@ export interface TypeAcquirer {
 
 export function createTypeAcquirer(deps: {
   receiveFile: (path: string, content: string) => void
+  /**
+   * Fires when an acquisition batch finishes having delivered files.
+   * Callers that raced past `ensureTypesFor` (the batch was already
+   * attempted by an earlier call) analyzed WITHOUT these typings —
+   * this signal lets the main thread re-run them.
+   */
+  onAcquired?: () => void
 }): TypeAcquirer {
   const attempted = new Set<string>()
   let finishedResolve: (() => void) | null = null
+  let deliveredInBatch = 0
 
   const ata = setupTypeAcquisition({
     projectName: 'typarium',
@@ -36,11 +44,14 @@ export function createTypeAcquirer(deps: {
     },
     delegate: {
       receivedFile: (content: string, path: string) => {
+        deliveredInBatch += 1
         deps.receiveFile(path, content)
       },
       finished: () => {
         finishedResolve?.()
         finishedResolve = null
+        if (deliveredInBatch > 0) deps.onAcquired?.()
+        deliveredInBatch = 0
       },
     },
   })
@@ -65,6 +76,8 @@ export function createTypeAcquirer(deps: {
 
     await new Promise<void>((resolve) => {
       const timer = setTimeout(() => {
+        // Give up waiting, but keep the batch's finished-notification
+        // alive: late-arriving typings still trigger onAcquired.
         finishedResolve = null
         resolve()
       }, ATA_TIMEOUT_MS)
@@ -72,6 +85,7 @@ export function createTypeAcquirer(deps: {
         clearTimeout(timer)
         resolve()
       }
+      deliveredInBatch = 0
       try {
         ata(source)
       } catch {
