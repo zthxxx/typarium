@@ -100,6 +100,11 @@ export class VisualizationStore {
     this.cursorEntityId = entity?.id ?? null
   }
 
+  /** Editor lost focus: no caret-driven highlight should remain. */
+  clearCursor(): void {
+    this.cursorEntityId = null
+  }
+
   get activeEntityId(): string | null {
     return this.hoveredEntityId ?? this.cursorEntityId
   }

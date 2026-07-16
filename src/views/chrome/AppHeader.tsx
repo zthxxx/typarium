@@ -22,10 +22,10 @@ export const AppHeader = observer(function AppHeader({
     <header className="flex h-14 items-center gap-4 border-b-[3px] border-(--color-ink) bg-white px-4">
       <div className="flex items-center gap-2.5">
         <LogoMark />
-        <span className="font-display text-lg font-bold tracking-tight">
+        <span className="font-game text-[22px] font-bold tracking-tight">
           typarium
         </span>
-        <span className="hidden text-sm text-(--color-ink-soft) md:inline">
+        <span className="hidden rounded-sm bg-[linear-gradient(to_top,rgba(247,223,30,0.6)_36%,transparent_36%)] px-1 text-sm font-semibold md:inline">
           {settings.t('app.tagline')}
         </span>
       </div>
@@ -36,7 +36,7 @@ export const AppHeader = observer(function AppHeader({
             {settings.t('header.language')}
           </span>
           <select
-            className="rounded-lg border-2 border-(--color-line) bg-white px-2 py-1 font-mono text-xs font-semibold"
+            className="rounded-xl border-2 border-(--color-ink) bg-white px-2 py-1 font-mono text-xs font-bold shadow-(--shadow-keycap)"
             value={languageLabel}
             onChange={() => {
               // Single language in phase 1; the selector exists so the
@@ -49,7 +49,7 @@ export const AppHeader = observer(function AppHeader({
 
         <button
           type="button"
-          className="rounded-full border-2 border-(--color-line) bg-white px-3 py-1 font-mono text-xs font-semibold whitespace-nowrap transition-transform active:scale-[0.96]"
+          className="rounded-full border-2 border-(--color-ink) bg-white px-3 py-1 font-mono text-xs font-bold whitespace-nowrap shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
           onClick={() => {
             settings.setLocale(settings.locale === 'zh' ? 'en' : 'zh')
           }}
@@ -60,13 +60,13 @@ export const AppHeader = observer(function AppHeader({
         <div className="relative">
           <button
             type="button"
-            className="rounded-full bg-(--color-brand) px-4 py-1.5 text-sm font-semibold whitespace-nowrap text-white shadow-[0_2px_0_var(--color-brand-deep)] transition-transform active:translate-y-[1px] active:shadow-none"
+            className="rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 py-1 text-sm font-bold whitespace-nowrap text-white shadow-[0_3px_0_var(--color-brand-deep)] transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
             onClick={() => setShareOpen((open) => !open)}
           >
             {settings.t('header.share')}
           </button>
           {shareOpen ? (
-            <div className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-[4px_4px_0_rgba(27,39,51,0.15)]">
+            <div className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-(--shadow-sticker)">
               <ShareMenuItem
                 label={settings.t('header.share')}
                 onClick={() => {

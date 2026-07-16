@@ -13,18 +13,40 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'typarium · TypeScript types, drawn as sets',
+        title: 'typarium · TypeScript 代数集合论可视化',
       },
       {
         name: 'description',
         content:
-          'An interactive Euler-diagram playground that teaches the TypeScript type system through set theory: unknown as the universe, never as the empty set, and every exported type drawn as the set of values it contains.',
+          '把 TypeScript 类型系统画成集合论 Euler 图的交互教学游乐场：unknown 是全集、never 是空集，每个导出类型都是它所包含值的集合。An interactive Euler-diagram playground that teaches the TypeScript type system through set theory.',
+      },
+      {
+        name: 'theme-color',
+        content: '#3178c6',
       },
     ],
     links: [
       {
         rel: 'stylesheet',
         href: appCss,
+      },
+      {
+        rel: 'icon',
+        href: '/favicon.ico',
+        sizes: '48x48',
+      },
+      {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: '/favicon.svg',
+      },
+      {
+        rel: 'apple-touch-icon',
+        href: '/apple-touch-icon.png',
+      },
+      {
+        rel: 'manifest',
+        href: '/manifest.json',
       },
     ],
   }),
@@ -33,7 +55,7 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <HeadContent />
       </head>

@@ -42,10 +42,10 @@ export const RectCanvas = observer(function RectCanvas() {
       ref={hostRef}
       data-testid="rect-canvas"
       className={[
-        'relative h-full w-full overflow-hidden rounded-2xl transition-colors',
-        universeActive
-          ? 'border-4 border-(--color-brand)'
-          : 'border-4 border-transparent',
+        // The game board: a floating card on the play-mat. The outline
+        // is always drawn; unknown-universe recolors it brand blue.
+        'relative h-full w-full overflow-hidden rounded-2xl border-4 shadow-(--shadow-sticker) transition-colors',
+        universeActive ? 'border-(--color-brand)' : 'border-(--color-line)',
         neverActive ? 'canvas-dots' : 'bg-(--color-board)',
       ].join(' ')}
       onMouseMove={(event) => {
@@ -181,7 +181,7 @@ function StackTooltip({
   const flipX = pointer.x > hostWidth - 280
   return (
     <div
-      className="pointer-events-none absolute z-30 min-w-44 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 shadow-[4px_4px_0_rgba(27,39,51,0.18)]"
+      className="pointer-events-none absolute z-30 min-w-44 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 shadow-(--shadow-sticker)"
       style={{
         left: flipX ? undefined : pointer.x + 16,
         right: flipX ? hostWidth - pointer.x + 16 : undefined,
@@ -261,7 +261,7 @@ const NeverLegend = observer(function NeverLegend() {
       </svg>
       {settings.t('canvas.neverLegend')}
       {hovered && resolved.length > 0 ? (
-        <span className="absolute bottom-full left-0 mb-2 block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-normal shadow-[4px_4px_0_rgba(27,39,51,0.18)]">
+        <span className="absolute bottom-full left-0 mb-2 block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-normal shadow-(--shadow-sticker)">
           <ul className="flex flex-col gap-1">
             {resolved.map((entity) => (
               <li key={entity.id} className="flex items-baseline gap-2">

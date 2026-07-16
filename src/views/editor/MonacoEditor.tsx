@@ -43,7 +43,7 @@ export const MonacoEditor = observer(function MonacoEditor() {
       const editor = monaco.editor.create(hostRef.current, {
         model,
         fontSize: 14,
-        fontFamily: "'JetBrains Mono Variable', monospace",
+        fontFamily: "'Maple Mono NF CN', ui-monospace, Menlo, monospace",
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
         automaticLayout: true,
@@ -59,9 +59,13 @@ export const MonacoEditor = observer(function MonacoEditor() {
       })
 
       // Bidirectional highlight: caret inside an exported declaration
-      // lights up its rectangle on the canvas.
+      // lights up its rectangle on the canvas; leaving the editor
+      // restores every rectangle to full strength.
       editor.onDidChangeCursorPosition((event) => {
         viz.setCursorOffset(model.getOffsetAt(event.position))
+      })
+      editor.onDidBlurEditorWidget(() => {
+        viz.clearCursor()
       })
 
       // Language features backed by the single analysis worker.

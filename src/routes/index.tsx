@@ -41,7 +41,10 @@ function BootSplash() {
         />
         <circle cx="9.5" cy="11" r="1.8" fill="#1b2733" />
       </svg>
-      <p className="font-display text-xl font-bold tracking-tight">typarium</p>
+      <p className="font-game text-2xl font-bold tracking-tight">typarium</p>
+      <p className="text-sm font-semibold text-(--color-ink-soft)">
+        TypeScript 代数集合论可视化
+      </p>
     </div>
   )
 }

@@ -93,7 +93,7 @@ const AppShell = observer(function AppShell({
       <AppFooter engineLabel={adapter.engineLabel} />
       <AnyBadge />
       {toast ? (
-        <div className="fixed bottom-14 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-(--color-ink) bg-white px-5 py-2 text-sm font-semibold shadow-[3px_3px_0_rgba(27,39,51,0.15)]">
+        <div className="toast-pop fixed bottom-14 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-(--color-ink) bg-white px-5 py-2 text-sm font-bold shadow-(--shadow-sticker)">
           {toast}
         </div>
       ) : null}

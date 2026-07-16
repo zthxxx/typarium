@@ -7,12 +7,12 @@
 export type Locale = 'zh' | 'en'
 
 const en = {
-  'app.tagline': 'TypeScript types, drawn as sets',
+  'app.tagline': 'TypeScript algebraic set theory, visualized',
   'header.language': 'Language',
   'header.share': 'Share',
   'header.shareWithContent': 'Share with content',
   'header.shareCopied': 'Share link copied to clipboard',
-  'presets.title': 'Types',
+  'presets.title': 'Presets',
   'presets.snippets': 'Snippets',
   'canvas.neverLegend': '∅ never = the empty set, inside every set',
   'canvas.neverRow': '∅ never',
@@ -31,12 +31,12 @@ const en = {
 export type MessageKey = keyof typeof en
 
 const zh: Record<MessageKey, string> = {
-  'app.tagline': '把 TypeScript 类型画成集合',
+  'app.tagline': 'TypeScript 代数集合论可视化',
   'header.language': '语言',
   'header.share': '分享',
   'header.shareWithContent': '携带当前内容分享',
   'header.shareCopied': '分享链接已复制到剪贴板',
-  'presets.title': '类型',
+  'presets.title': '预设类型',
   'presets.snippets': '代码模板',
   'canvas.neverLegend': '∅ never = 空集，存在于任何集合之中',
   'canvas.neverRow': '∅ never',

@@ -191,6 +191,8 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     interface Subject {
       entity: TypeEntity
       type: ts.Type
+      /** Probe alias (`__En` / `__Vn`) — pass-two lookups re-fetch by it. */
+      aliasName: string
     }
     const subjects: Array<Subject> = []
 
@@ -221,6 +223,7 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       if (!type) return
       subjects.push({
         type,
+        aliasName: `__E${index}`,
         entity: {
           id: entry.name,
           name: entry.name,
@@ -229,6 +232,7 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
           special: classify(type),
           origin: 'code',
           declarationSpan: entry.span,
+          coveredBySubsets: false,
         },
       })
     })
@@ -238,6 +242,7 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       if (!type) return
       subjects.push({
         type,
+        aliasName: `__V${index}`,
         entity: {
           id: `preset:${virtual.name}`,
           name: virtual.name,
@@ -246,6 +251,7 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
           special: classify(type),
           origin: 'preset',
           declarationSpan: null,
+          coveredBySubsets: false,
         },
       })
     })
@@ -280,6 +286,8 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       }
     }
 
+    markUnionCoverage(drawable, relations)
+
     return {
       entities: subjects.map((subject) => subject.entity),
       relations,
@@ -288,6 +296,78 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
         .filter((subject) => subject.entity.special === 'outside-set-theory')
         .map((subject) => subject.entity.name),
     }
+  }
+
+  /**
+   * Pass two: `coveredBySubsets` — is P exactly the union of its proper
+   * subsets among displayed entities? ⊇ holds by construction, so one
+   * `P ⊆ S₁ | … | Sₖ` query per candidate decides it. The checker has
+   * no public union factory, so the unions are synthesized as extra
+   * probe aliases; the file update invalidates pass-one `ts.Type`s,
+   * hence every type here is re-fetched from the fresh program.
+   * Special entities never appear in `relations` → zero subsets → the
+   * constructor default `false` already answers for them.
+   */
+  const markUnionCoverage = (
+    drawable: Array<{ entity: TypeEntity; aliasName: string }>,
+    relations: Array<PairRelation>,
+  ): void => {
+    const aliasOf = new Map(
+      drawable.map((subject) => [subject.entity.id, subject.aliasName]),
+    )
+    const subsetsOf = new Map<string, Array<string>>()
+    for (const relation of relations) {
+      if (relation.kind === 'subset') {
+        subsetsOf.set(relation.b, [
+          ...(subsetsOf.get(relation.b) ?? []),
+          relation.a,
+        ])
+      } else if (relation.kind === 'superset') {
+        subsetsOf.set(relation.a, [
+          ...(subsetsOf.get(relation.a) ?? []),
+          relation.b,
+        ])
+      }
+    }
+
+    const candidates = drawable.filter(
+      (subject) => (subsetsOf.get(subject.entity.id)?.length ?? 0) > 0,
+    )
+    if (candidates.length === 0) return
+
+    const unionLines = candidates.map((subject, index) => {
+      const memberAliases = (subsetsOf.get(subject.entity.id) ?? []).map(
+        (id) => aliasOf.get(id) ?? 'never',
+      )
+      return `export type __U${index} = ${memberAliases.join(' | ')}`
+    })
+    setFile(
+      PROBE_FILE,
+      `${contents.get(PROBE_FILE) ?? ''}\n${unionLines.join('\n')}`,
+    )
+
+    const program = env.languageService.getProgram()
+    const probeFile = program?.getSourceFile(PROBE_FILE)
+    if (!program || !probeFile) return
+    const checker = program.getTypeChecker()
+    const freshTypes = new Map<string, ts.Type>()
+    for (const statement of probeFile.statements) {
+      if (!ts.isTypeAliasDeclaration(statement)) continue
+      freshTypes.set(
+        statement.name.text,
+        checker.getTypeAtLocation(statement.name),
+      )
+    }
+
+    candidates.forEach((subject, index) => {
+      const target = freshTypes.get(subject.aliasName)
+      const union = freshTypes.get(`__U${index}`)
+      if (!target || !union) return
+      subject.entity.coveredBySubsets = checker.isTypeAssignableTo(
+        target,
+        union,
+      )
+    })
   }
 
   const check = (source: string): Array<SourceDiagnostic> => {

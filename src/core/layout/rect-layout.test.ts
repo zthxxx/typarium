@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import { CANVAS_PAD, CELL_GAP } from '#/core/layout/constants.ts'
-import { computeRectLayout, gridDimensions } from '#/core/layout/rect-layout.ts'
+import {
+  computeRectLayout,
+  exactGridDimensions,
+  gridDimensions,
+} from '#/core/layout/rect-layout.ts'
 import type { Box, EntityRect } from '#/core/layout/types.ts'
 import type {
   PairRelation,
@@ -12,7 +16,11 @@ import type {
 const VIEWPORT = { width: 1200, height: 800 }
 const EPSILON = 1e-6
 
-function entity(id: string, special: SpecialRole = 'none'): TypeEntity {
+function entity(
+  id: string,
+  special: SpecialRole = 'none',
+  coveredBySubsets = false,
+): TypeEntity {
   return {
     id,
     name: id,
@@ -20,6 +28,7 @@ function entity(id: string, special: SpecialRole = 'none'): TypeEntity {
     expandedText: id,
     special,
     origin: 'code',
+    coveredBySubsets,
     declarationSpan: null,
   }
 }
@@ -59,6 +68,17 @@ function boxesOverlap(a: Box, b: Box): boolean {
   )
 }
 
+function intersect(a: Box, b: Box): Box {
+  const x = Math.max(a.x, b.x)
+  const y = Math.max(a.y, b.y)
+  return {
+    x,
+    y,
+    width: Math.min(a.x + a.width, b.x + b.width) - x,
+    height: Math.min(a.y + a.height, b.y + b.height) - y,
+  }
+}
+
 describe('gridDimensions', () => {
   test('rounds odd counts up to even and factors with cols >= rows', () => {
     expect(gridDimensions(1)).toEqual({ cols: 1, rows: 1 })
@@ -72,6 +92,18 @@ describe('gridDimensions', () => {
     expect(gridDimensions(12)).toEqual({ cols: 4, rows: 3 })
     expect(gridDimensions(14)).toEqual({ cols: 7, rows: 2 })
     expect(gridDimensions(16)).toEqual({ cols: 4, rows: 4 })
+  })
+})
+
+describe('exactGridDimensions', () => {
+  test('keeps the exact count: odd numbers become a single row', () => {
+    expect(exactGridDimensions(1)).toEqual({ cols: 1, rows: 1 })
+    expect(exactGridDimensions(2)).toEqual({ cols: 2, rows: 1 })
+    expect(exactGridDimensions(3)).toEqual({ cols: 3, rows: 1 })
+    expect(exactGridDimensions(4)).toEqual({ cols: 2, rows: 2 })
+    expect(exactGridDimensions(5)).toEqual({ cols: 5, rows: 1 })
+    expect(exactGridDimensions(6)).toEqual({ cols: 3, rows: 2 })
+    expect(exactGridDimensions(9)).toEqual({ cols: 3, rows: 3 })
   })
 })
 
@@ -152,7 +184,7 @@ describe('computeRectLayout', () => {
     expect(ys.size).toBe(2)
   })
 
-  test('a contained entity takes half of its container content box', () => {
+  test('a contained entity takes half of its non-covered container', () => {
     const layout = layoutOf(
       [entity('A'), entity('B')],
       [rel('B', 'subset', 'A')],
@@ -166,7 +198,7 @@ describe('computeRectLayout', () => {
     expect(b.outer.height).toBeCloseTo(a.contentBox.height)
   })
 
-  test('A ⊃ {B, C} lays children on a 2x2 grid (2 cells + other + empty)', () => {
+  test('non-covered A ⊃ {B, C} keeps the extra slot (2x2 grid)', () => {
     const layout = layoutOf(
       [entity('A'), entity('B'), entity('C')],
       [
@@ -183,6 +215,136 @@ describe('computeRectLayout', () => {
     expect(b.outer.width).toBeCloseTo((a.contentBox.width - CELL_GAP) / 2)
     expect(b.outer.height).toBeCloseTo((a.contentBox.height - CELL_GAP) / 2)
     expect(boxesOverlap(b.outer, c.outer)).toBe(false)
+  })
+
+  test('covered container with two children fills as 2x1 with no spare cell', () => {
+    // User case 1: C1=string, C2=number, C3=string|number ≡ C1 ∪ C2.
+    const layout = layoutOf(
+      [entity('C1'), entity('C2'), entity('C3', 'none', true)],
+      [
+        rel('C1', 'subset', 'C3'),
+        rel('C2', 'subset', 'C3'),
+        rel('C1', 'unrelated', 'C2'),
+      ],
+    )
+    const c3 = rectOf(layout.rects, 'C3')
+    const c1 = rectOf(layout.rects, 'C1')
+    const c2 = rectOf(layout.rects, 'C2')
+    // 2 children, covered → 2×1, each child takes exactly half.
+    expect(c1.outer.width).toBeCloseTo((c3.contentBox.width - CELL_GAP) / 2)
+    expect(c2.outer.width).toBeCloseTo((c3.contentBox.width - CELL_GAP) / 2)
+    expect(c1.outer.height).toBeCloseTo(c3.contentBox.height)
+    expect(c2.outer.height).toBeCloseTo(c3.contentBox.height)
+    // Together with the gap they span the full content width: no hole.
+    expect(c1.outer.width + c2.outer.width + CELL_GAP).toBeCloseTo(
+      c3.contentBox.width,
+    )
+  })
+
+  test('covered container with three children fills as 3x1, never 2x2', () => {
+    // User case 2: C4 = string | number | boolean ≡ C1 ∪ C2 ∪ C3.
+    const layout = layoutOf(
+      [entity('C1'), entity('C2'), entity('C3'), entity('C4', 'none', true)],
+      [
+        rel('C1', 'subset', 'C4'),
+        rel('C2', 'subset', 'C4'),
+        rel('C3', 'subset', 'C4'),
+        rel('C1', 'unrelated', 'C2'),
+        rel('C1', 'unrelated', 'C3'),
+        rel('C2', 'unrelated', 'C3'),
+      ],
+    )
+    const c4 = rectOf(layout.rects, 'C4')
+    const inner = ['C1', 'C2', 'C3'].map((id) => rectOf(layout.rects, id))
+    // Single row: same y, three equal widths filling the content box.
+    const ys = new Set(inner.map((rect) => Math.round(rect.outer.y)))
+    expect(ys.size).toBe(1)
+    const expected = (c4.contentBox.width - 2 * CELL_GAP) / 3
+    for (const rect of inner) {
+      expect(rect.outer.width).toBeCloseTo(expected)
+      expect(rect.outer.height).toBeCloseTo(c4.contentBox.height)
+    }
+  })
+
+  test('two-parent child renders in the overlap band of its parents', () => {
+    // User case 3: C1=string, C2=string|number, C3=string|boolean.
+    const layout = layoutOf(
+      [entity('C1'), entity('C2'), entity('C3')],
+      [
+        rel('C1', 'subset', 'C2'),
+        rel('C1', 'subset', 'C3'),
+        rel('C2', 'unrelated', 'C3'),
+      ],
+    )
+    const c1 = rectOf(layout.rects, 'C1')
+    const c2 = rectOf(layout.rects, 'C2')
+    const c3 = rectOf(layout.rects, 'C3')
+    // Parents overlap horizontally...
+    expect(c2.outer.x + c2.outer.width).toBeGreaterThan(c3.outer.x + EPSILON)
+    expect(boxesOverlap(c2.outer, c3.outer)).toBe(true)
+    // ...and the shared child sits inside BOTH parents' content boxes.
+    expect(boxContains(c2.contentBox, c1.outer)).toBe(true)
+    expect(boxContains(c3.contentBox, c1.outer)).toBe(true)
+    const band = intersect(c2.contentBox, c3.contentBox)
+    expect(boxContains(band, c1.outer)).toBe(true)
+    // Draw order: both parents precede the shared child.
+    const indexOf = (id: string) =>
+      layout.rects.findIndex((rect) => rect.entityIds.includes(id))
+    expect(indexOf('C2')).toBeLessThan(indexOf('C1'))
+    expect(indexOf('C3')).toBeLessThan(indexOf('C1'))
+  })
+
+  test('overlap pair keeps exclusive children out of the band', () => {
+    const layout = layoutOf(
+      [entity('S'), entity('P'), entity('Q'), entity('PE'), entity('QE')],
+      [
+        rel('S', 'subset', 'P'),
+        rel('S', 'subset', 'Q'),
+        rel('P', 'unrelated', 'Q'),
+        rel('PE', 'subset', 'P'),
+        rel('QE', 'subset', 'Q'),
+        rel('PE', 'unrelated', 'QE'),
+        rel('PE', 'unrelated', 'S'),
+        rel('QE', 'unrelated', 'S'),
+        rel('PE', 'unrelated', 'Q'),
+        rel('QE', 'unrelated', 'P'),
+      ],
+    )
+    const p = rectOf(layout.rects, 'P')
+    const q = rectOf(layout.rects, 'Q')
+    const s = rectOf(layout.rects, 'S')
+    const pe = rectOf(layout.rects, 'PE')
+    const qe = rectOf(layout.rects, 'QE')
+    const band = intersect(p.contentBox, q.contentBox)
+    expect(boxContains(band, s.outer)).toBe(true)
+    // Exclusive children stay inside exactly one parent, off the band.
+    expect(boxContains(p.contentBox, pe.outer)).toBe(true)
+    expect(boxesOverlap(pe.outer, q.outer)).toBe(false)
+    expect(boxContains(q.contentBox, qe.outer)).toBe(true)
+    expect(boxesOverlap(qe.outer, p.outer)).toBe(false)
+  })
+
+  test('three parents fall back to the earliest with a warning', () => {
+    const layout = layoutOf(
+      [entity('X'), entity('P1'), entity('P2'), entity('P3')],
+      [
+        rel('X', 'subset', 'P1'),
+        rel('X', 'subset', 'P2'),
+        rel('X', 'subset', 'P3'),
+        rel('P1', 'unrelated', 'P2'),
+        rel('P1', 'unrelated', 'P3'),
+        rel('P2', 'unrelated', 'P3'),
+      ],
+    )
+    expect(
+      layout.warnings.some((warning) => warning.includes('3 parents')),
+    ).toBe(true)
+    const x = rectOf(layout.rects, 'X')
+    const p1 = rectOf(layout.rects, 'P1')
+    expect(boxContains(p1.contentBox, x.outer)).toBe(true)
+    // The other two parents render as plain siblings.
+    const p2 = rectOf(layout.rects, 'P2')
+    expect(boxContains(p2.contentBox, x.outer)).toBe(false)
   })
 
   test('equivalent entities merge into one rect with stacked rings', () => {
@@ -224,6 +386,22 @@ describe('computeRectLayout', () => {
     expect(a.outer.width).toBeCloseTo(
       (VIEWPORT.width - CANVAS_PAD * 2 - CELL_GAP) / 2,
     )
+  })
+
+  test('a covered universe lets top-level classes fill the canvas', () => {
+    const layout = layoutOf(
+      [entity('U', 'universe', true), entity('A'), entity('B')],
+      [
+        rel('A', 'subset', 'U'),
+        rel('B', 'subset', 'U'),
+        rel('A', 'unrelated', 'B'),
+      ],
+    )
+    const a = rectOf(layout.rects, 'A')
+    const b = rectOf(layout.rects, 'B')
+    // covered → 2 slots exactly, halves with no third cell.
+    const canvasWidth = VIEWPORT.width - CANVAS_PAD * 2
+    expect(a.outer.width + b.outer.width + CELL_GAP).toBeCloseTo(canvasWidth)
   })
 
   test('never and any entities never become rectangles', () => {

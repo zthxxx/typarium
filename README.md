@@ -1,6 +1,7 @@
 # typarium
 
-TypeScript types, drawn as sets. An interactive Euler-diagram playground
+TypeScript 代数集合论可视化 (TypeScript algebraic set theory,
+visualized). An interactive Euler-diagram playground
 that teaches the type system through set theory: `unknown` is the
 universe, `never` is the empty set (the ∅ texture in every region),
 literals are points, and every exported type is drawn as the set of

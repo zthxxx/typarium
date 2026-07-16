@@ -10,21 +10,30 @@ const EPSILON = 1e-6
  * Random containment forests, encoded the way an analyzer would emit
  * them: full transitive ancestor matrix plus `unrelated` for the rest.
  * `parents[i]` is the parent index of node i (must be < i) or null.
+ * Every node additionally gets a random `coveredBySubsets` flag — the
+ * layout must stay valid whichever containers claim union coverage.
  */
 const forestArbitrary = fc
-  .array(fc.option(fc.nat(), { nil: null }), { minLength: 1, maxLength: 8 })
-  .map((raw) => {
+  .record({
+    raw: fc.array(fc.option(fc.nat(), { nil: null }), {
+      minLength: 1,
+      maxLength: 8,
+    }),
+    covered: fc.array(fc.boolean(), { minLength: 8, maxLength: 8 }),
+  })
+  .map(({ raw, covered }) => {
     const parents = raw.map((value, index) =>
       value === null || index === 0 ? null : value % index,
     )
     const ids = parents.map((_, index) => `T${index}`)
-    const entities: Array<TypeEntity> = ids.map((id) => ({
+    const entities: Array<TypeEntity> = ids.map((id, index) => ({
       id,
       name: id,
       typeText: id,
       expandedText: id,
       special: 'none',
       origin: 'code',
+      coveredBySubsets: covered[index] ?? false,
       declarationSpan: null,
     }))
 
@@ -111,7 +120,8 @@ describe('computeRectLayout properties', () => {
         }
 
         // Emitted children sit inside their forest-parent's content box;
-        // siblings sharing a parent never overlap.
+        // siblings sharing a parent never overlap (the generator builds
+        // single-parent trees, so no overlap pairs arise here).
         entities.forEach((entity, index) => {
           const rect = byId.get(entity.id)
           const parentIndex = parents[index]

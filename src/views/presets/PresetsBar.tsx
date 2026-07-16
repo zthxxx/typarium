@@ -35,8 +35,8 @@ export const PresetsBar = observer(function PresetsBar() {
   }, [snippetsOpen])
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b-2 border-(--color-line) bg-white px-3 py-2">
-      <span className="mr-1 font-mono text-[11px] font-semibold text-(--color-ink-soft)">
+    <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-1">
+      <span className="mr-1 font-mono text-[11px] font-bold text-(--color-ink-soft)">
         {settings.t('presets.title')}
       </span>
       {virtual.map((preset) => (
@@ -51,13 +51,13 @@ export const PresetsBar = observer(function PresetsBar() {
         <button
           type="button"
           aria-expanded={snippetsOpen}
-          className="rounded-full border-2 border-dashed border-(--color-line) bg-white px-2.5 py-0.5 font-mono text-xs font-semibold text-(--color-ink-soft) transition-transform hover:border-(--color-brand) hover:text-(--color-brand) active:scale-[0.95]"
+          className="rounded-full border-2 border-dashed border-(--color-ink-soft) bg-white/70 px-3 py-1 font-mono text-xs font-bold text-(--color-ink-soft) transition-[transform,color,border-color] hover:border-(--color-brand) hover:text-(--color-brand) active:scale-[0.95]"
           onClick={() => setSnippetsOpen((open) => !open)}
         >
           {settings.t('presets.snippets')} {snippetsOpen ? '▴' : '▾'}
         </button>
         {snippetsOpen ? (
-          <div className="absolute top-full left-0 z-40 mt-2 flex w-max max-w-[80vw] flex-col gap-1 rounded-xl border-2 border-(--color-ink) bg-white p-2 shadow-[4px_4px_0_rgba(27,39,51,0.15)]">
+          <div className="absolute top-full left-0 z-40 mt-2 flex w-max max-w-[80vw] flex-col gap-1 rounded-xl border-2 border-(--color-ink) bg-white p-2 shadow-(--shadow-sticker)">
             {snippets.map((preset) => (
               <button
                 key={preset.label}
@@ -94,15 +94,17 @@ const PresetChip = observer(function PresetChip({
   onClick: () => void
 }) {
   const warning = preset.tone === 'warning'
+  // Keycap physics: raised when idle, pressed-in (down + no shadow)
+  // once active — the chip IS the toggle state.
   const base =
-    'rounded-full border-2 px-2.5 py-0.5 font-mono text-xs font-semibold transition-transform active:scale-[0.95]'
+    'rounded-full border-2 px-3 py-1 font-mono text-xs font-bold transition-[transform,box-shadow,background-color,border-color]'
   const palette = warning
     ? active
-      ? 'border-(--color-warn-any) bg-(--color-warn-any) text-white'
-      : 'border-(--color-warn-any)/60 bg-(--color-warn-any)/8 text-(--color-warn-any)'
+      ? 'translate-y-[2px] border-(--color-warn-any) bg-(--color-warn-any) text-white'
+      : 'border-(--color-warn-any)/70 bg-white text-(--color-warn-any) shadow-[0_3px_0_rgba(255,77,48,0.35)] hover:-translate-y-[1px]'
     : active
-      ? 'border-(--color-brand) bg-(--color-brand) text-white'
-      : 'border-(--color-line) bg-white text-(--color-ink) hover:border-(--color-brand)'
+      ? 'translate-y-[2px] border-(--color-brand-deep) bg-(--color-brand) text-white'
+      : 'border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) hover:-translate-y-[1px]'
   return (
     <button
       type="button"

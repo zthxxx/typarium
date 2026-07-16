@@ -1,31 +1,49 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/outfit';
-@import '@fontsource-variable/jetbrains-mono';
+/*
+ * Maple Mono NF CN (subframe7536/maple-font) via its README-listed CDN
+ * (ZeoSeven). cn-font-split ships font-display: swap — system coding
+ * monospace renders until the webfont arrives (product rule).
+ */
+@import url('https://fontsapi.zeoseven.com/442/main/result.css');
 
 /*
  * Design tokens (ADR-0009): chrome uses the TypeScript brand family,
  * set regions use the semi-color-tag categorical palette (12 hues x
  * 4 alpha steps) mapped by the layout engine's colorIndex.
  * One theme (light) is locked page-wide: the canvas is an artboard.
+ *
+ * Casual-game chrome language: cartoon ink outlines, candy buttons
+ * with a hard bottom shadow that depresses on :active, keycap preset
+ * chips, and a dotted play-mat paper behind the floating board.
  */
 @theme {
-  --font-display: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  /* Every UI string (Chinese included) sets in monospace: one voice. */
+  --font-display:
+    'Maple Mono NF CN', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-game:
+    'Maple Mono NF CN', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono:
+    'Maple Mono NF CN', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Chrome */
   --color-brand: #3178c6; /* TypeScript blue */
   --color-brand-deep: #235a97;
   --color-spark: #f7df1e; /* JS yellow, highlight/selection only */
-  --color-paper: #f7fafd; /* app background, cold off-white */
+  --color-spark-deep: #d9c000;
+  --color-paper: #eaf2fb; /* play-mat background, sky-tinted paper */
   --color-board: #fdfefe; /* canvas artboard */
   --color-ink: #1b2733;
   --color-ink-soft: #5b6b7b;
-  --color-line: #d8e2ec;
+  --color-line: #c9d8e8;
   --color-warn-any: #ff4d30; /* any badge, orange-red */
 
   /* Game-feel structure */
   --radius-chunky: 14px;
   --radius-pill: 999px;
+
+  /* Sticker shadows: hard offsets, never blurred (cartoon depth) */
+  --shadow-sticker: 4px 4px 0 0 rgba(27, 39, 51, 0.12);
+  --shadow-keycap: 0 3px 0 0 rgba(27, 39, 51, 0.16);
 }
 
 * {
@@ -38,11 +56,43 @@ body,
   min-height: 100%;
 }
 
+/*
+ * The play-mat: a faint brand-blue dot grid over tinted paper, so
+ * panels and keycap chips read as pieces sitting ON a game surface.
+ * One background-image tile, GPU-tiled — effectively free to paint.
+ */
 body {
   margin: 0;
-  background: var(--color-paper);
+  background-color: var(--color-paper);
+  background-image: radial-gradient(
+    rgba(49, 120, 198, 0.11) 1.2px,
+    transparent 1.2px
+  );
+  background-size: 22px 22px;
   color: var(--color-ink);
   font-family: var(--font-display);
+}
+
+/* Toast bounce-in: feedback for the share action (state transition). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes toast-pop {
+    0% {
+      transform: translate(-50%, 12px) scale(0.9);
+      opacity: 0;
+    }
+    60% {
+      transform: translate(-50%, -3px) scale(1.03);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, 0) scale(1);
+      opacity: 1;
+    }
+  }
+
+  .toast-pop {
+    animation: toast-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 }
 
 /*
@@ -89,6 +139,25 @@ body {
   background-color: var(--color-board);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ctext x='12' y='16' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.16)'%3E%E2%88%85%3C/text%3E%3Ctext x='36' y='16' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.055)'%3E%E2%88%85%3C/text%3E%3Ctext x='12' y='40' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.055)'%3E%E2%88%85%3C/text%3E%3Ctext x='36' y='40' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.16)'%3E%E2%88%85%3C/text%3E%3C/svg%3E");
   background-size: 48px 48px;
+}
+
+/*
+ * The any badge floats like a slow-breathing cloud: gentle vertical
+ * drift on the INNER visual only — the anchor (and its tooltip) stays
+ * put. Honors prefers-reduced-motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .cloud-float {
+    animation: cloud-drift 3.6s ease-in-out infinite alternate;
+  }
+  @keyframes cloud-drift {
+    from {
+      transform: translateY(-3px);
+    }
+    to {
+      transform: translateY(4px);
+    }
+  }
 }
 
 /* Focus visibility: game-feel thick focus ring in brand color */

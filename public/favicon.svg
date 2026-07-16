@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28">
+  <!-- The typarium Euler-mark: one set containing another (same geometry
+       as the in-app LogoMark; strokes bumped slightly for tab-size legibility). -->
+  <circle cx="14" cy="14" r="11.5" fill="none" stroke="#3178c6" stroke-width="3.5" />
+  <circle cx="17" cy="16" r="5.5" fill="#f7df1e" stroke="#1b2733" stroke-width="2.25" />
+  <circle cx="9.5" cy="11" r="2" fill="#1b2733" />
+</svg>

@@ -57,6 +57,14 @@ export interface TypeEntity {
   expandedText: string
   special: SpecialRole
   origin: EntityOrigin
+  /**
+   * True when the entity is EXACTLY the union of its proper subsets
+   * among displayed entities (P ⊆ S₁ ∪ … ∪ Sₖ; ⊇ holds by
+   * construction). Layout then lets the children fill the container
+   * completely — no implicit "everything else" slot (e.g.
+   * `string | number` with both `string` and `number` displayed).
+   */
+  coveredBySubsets: boolean
   /** Span of the declaration in the source; null for preset entities. */
   declarationSpan: SourceSpan | null
 }

@@ -83,8 +83,8 @@ export const EditorDrawer = observer(function EditorDrawer() {
         <div className="mx-auto h-full w-[3px] bg-(--color-line) transition-colors group-hover:bg-(--color-brand)" />
       </div>
       <div className="flex min-h-0 w-full flex-col border-l-2 border-(--color-line) bg-(--color-board)">
-        <div className="flex h-8 shrink-0 items-center justify-between border-b-2 border-(--color-line) px-3">
-          <span className="font-mono text-[11px] font-semibold text-(--color-ink-soft)">
+        <div className="flex h-8 shrink-0 items-center justify-between border-b-2 border-(--color-line) bg-white px-3">
+          <span className="font-mono text-[11px] font-bold text-(--color-ink-soft)">
             {settings.t('editor.title')}
           </span>
           <button

@@ -28,6 +28,10 @@ function relationOf(
   return found.kind
 }
 
+function coveredOf(result: AnalysisResult, id: string): boolean | undefined {
+  return result.entities.find((entity) => entity.id === id)?.coveredBySubsets
+}
+
 describe('ts analyzer', () => {
   test('covariance keeps direction, function parameters invert it', () => {
     const result = analyzer.analyze(
@@ -198,6 +202,63 @@ describe('ts analyzer', () => {
     const entries = analyzer.completions(source, source.length)
     expect(entries.length).toBeGreaterThan(0)
     expect(entries.map((entry) => entry.name)).toContain('string')
+  })
+
+  test('union coverage: parent exactly covered by displayed subsets', () => {
+    const result = analyzer.analyze(
+      [
+        'export type C1 = string',
+        'export type C2 = number',
+        'export type C3 = string | number',
+      ].join('\n'),
+      [],
+    )
+    expect(coveredOf(result, 'C3')).toBe(true)
+    expect(coveredOf(result, 'C1')).toBe(false)
+    expect(coveredOf(result, 'C2')).toBe(false)
+  })
+
+  test('union coverage: three-way union covered by its primitives', () => {
+    const result = analyzer.analyze(
+      [
+        'export type C1 = string',
+        'export type C2 = number',
+        'export type C3 = boolean',
+        'export type C4 = string | number | boolean',
+      ].join('\n'),
+      [],
+    )
+    expect(coveredOf(result, 'C4')).toBe(true)
+  })
+
+  test('union coverage: missing member leaves the parent uncovered', () => {
+    const result = analyzer.analyze(
+      ['export type C1 = string', 'export type C3 = string | number'].join(
+        '\n',
+      ),
+      [],
+    )
+    expect(coveredOf(result, 'C3')).toBe(false)
+  })
+
+  test('union coverage: literal unions count', () => {
+    const result = analyzer.analyze(
+      [
+        "export type A = 'a' | 'b'",
+        "export type B = 'a'",
+        "export type C = 'b'",
+      ].join('\n'),
+      [],
+    )
+    expect(coveredOf(result, 'A')).toBe(true)
+  })
+
+  test('union coverage: literals never exhaust a primitive', () => {
+    const result = analyzer.analyze("export type Foo = 'foo' | 'bar'", [
+      { name: 'string', typeText: 'string' },
+    ])
+    expect(coveredOf(result, 'preset:string')).toBe(false)
+    expect(coveredOf(result, 'Foo')).toBe(false)
   })
 
   test('deterministic: identical input yields identical result', () => {

@@ -6,9 +6,11 @@ import { useService } from '#/views/di.tsx'
 
 /**
  * The `any` escape hatch: outside set theory, so it floats ABOVE the
- * plane — a draggable badge with a drop shadow, defaulting to a spot
- * straddling the canvas/editor boundary. Dragging is clamped to the
- * viewport: the badge can never be lost off-screen (product rule).
+ * plane like a little cloud — irregular puffy outline, saturated
+ * colored shadow, and a slow vertical drift (the breathing motion
+ * lives on the inner visual; the anchor and its tooltip stay put).
+ * Dragging is clamped to the viewport; every fresh appearance starts
+ * from the default spot straddling the canvas/editor boundary.
  */
 export const AnyBadge = observer(function AnyBadge() {
   const viz = useService(VisualizationStore)
@@ -20,16 +22,25 @@ export const AnyBadge = observer(function AnyBadge() {
   )
   const [showTip, setShowTip] = useState(false)
 
+  const anyEntities = viz.anyEntities
+  const visible = anyEntities.length > 0
+
   const clamp = (x: number, y: number) => {
     const bounds = badgeRef.current?.getBoundingClientRect()
-    const width = bounds?.width ?? 80
-    const height = bounds?.height ?? 44
+    const width = bounds?.width ?? 90
+    const height = bounds?.height ?? 48
     const margin = 8
     return {
       x: Math.min(Math.max(x, margin), window.innerWidth - width - margin),
       y: Math.min(Math.max(y, margin), window.innerHeight - height - margin),
     }
   }
+
+  // Every disappearance forgets the dragged position: the next
+  // appearance starts from the default spot (product rule).
+  useEffect(() => {
+    if (!visible) setPosition(null)
+  }, [visible])
 
   // Window resizes must not strand the badge outside the viewport.
   useEffect(() => {
@@ -40,21 +51,20 @@ export const AnyBadge = observer(function AnyBadge() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const anyEntities = viz.anyEntities
-  if (anyEntities.length === 0) return null
+  if (!visible) return null
 
   return (
     <button
       ref={badgeRef}
       type="button"
       aria-label={settings.t('anyBadge.tooltip')}
-      className="fixed z-40 cursor-grab touch-none rounded-xl border-[3px] border-white bg-(--color-warn-any) px-5 py-2 font-mono text-lg font-bold text-white shadow-[0_10px_24px_rgba(255,77,48,0.45)] transition-transform active:cursor-grabbing"
+      className="fixed z-40 cursor-grab touch-none active:cursor-grabbing"
       style={
         position
-          ? { left: position.x, top: position.y, rotate: '-14deg' }
+          ? { left: position.x, top: position.y }
           : // Default spot straddles the canvas/editor divider: visually
             // "not inside the diagram plane".
-            { left: 'calc(58% - 40px)', top: '108px', rotate: '-14deg' }
+            { left: 'calc(58% - 44px)', top: '104px' }
       }
       onPointerEnter={() => setShowTip(true)}
       onPointerLeave={() => setShowTip(false)}
@@ -80,9 +90,26 @@ export const AnyBadge = observer(function AnyBadge() {
         dragState.current = null
       }}
     >
-      {settings.t('anyBadge.label')}
+      {/* Drifting cloud visual: puffs + irregular outline + hard color shadow */}
+      <span className="cloud-float relative block rotate-[-12deg]">
+        <span
+          aria-hidden="true"
+          className="absolute -top-2.5 left-3.5 h-5 w-5 rounded-full border-[3px] border-white bg-(--color-warn-any)"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute -top-1.5 right-4 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-(--color-warn-any)"
+        />
+        <span
+          className="relative block border-[3px] border-white bg-(--color-warn-any) px-5 py-1.5 font-mono text-lg font-bold text-white shadow-[0_8px_0_rgba(255,77,48,0.35),0_14px_28px_rgba(255,77,48,0.55)]"
+          style={{ borderRadius: '46% 54% 52% 48% / 58% 62% 38% 42%' }}
+        >
+          {settings.t('anyBadge.label')}
+        </span>
+      </span>
+
       {showTip ? (
-        <span className="absolute top-full left-1/2 mt-3 block w-72 -translate-x-1/2 rotate-[14deg] rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-[4px_4px_0_rgba(27,39,51,0.18)]">
+        <span className="absolute top-full left-1/2 mt-4 block w-72 -translate-x-1/2 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-[4px_4px_0_rgba(27,39,51,0.18)]">
           <span className="mb-1 block">{settings.t('anyBadge.tooltip')}</span>
           <ul className="flex flex-col gap-1">
             {anyEntities.map((entity) => (

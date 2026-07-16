@@ -1,11 +1,17 @@
 {
   "short_name": "typarium",
-  "name": "typarium · TypeScript types, drawn as sets",
+  "name": "typarium · TypeScript 代数集合论可视化",
+  "description": "把 TypeScript 类型系统画成集合论 Euler 图的交互教学游乐场",
   "icons": [
     {
       "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "sizes": "48x48 32x32 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
     },
     {
       "src": "logo192.png",
@@ -20,6 +26,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#3178c6",
+  "background_color": "#f2f7fd"
 }
