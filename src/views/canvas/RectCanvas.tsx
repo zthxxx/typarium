@@ -4,6 +4,7 @@ import { SettingsService } from '#/services/settings.service.ts'
 import { VisualizationStore } from '#/services/visualization.store.ts'
 import { useService } from '#/views/di.tsx'
 import { RING_INSET } from '#/core/layout/constants.ts'
+import { HasseView } from '#/views/canvas/HasseView.tsx'
 import { Popup } from '#/views/floating/Popup.tsx'
 import type { EntityRect } from '#/core/layout/types.ts'
 import type { RefObject } from 'react'
@@ -35,9 +36,12 @@ export const RectCanvas = observer(function RectCanvas() {
   }, [viz])
 
   const layout = viz.layout
+  const euler = layout?.mode === 'euler' ? layout : null
+  const hasse = layout?.mode === 'hasse' ? layout : null
   const universeActive = (layout?.universeIds.length ?? 0) > 0
   const neverActive = viz.neverDisplayed
-  const hasRects = (layout?.rects.length ?? 0) > 0
+  const hasContent =
+    (euler?.rects.length ?? 0) > 0 || (hasse?.nodes.length ?? 0) > 0
 
   return (
     <div
@@ -74,7 +78,7 @@ export const RectCanvas = observer(function RectCanvas() {
         </span>
       ) : null}
 
-      {layout?.rects.map((rect) => (
+      {euler?.rects.map((rect) => (
         <RectView
           key={rect.key}
           rect={rect}
@@ -89,7 +93,7 @@ export const RectCanvas = observer(function RectCanvas() {
         />
       ))}
 
-      {layout?.placeholders.map((placeholder) => (
+      {euler?.placeholders.map((placeholder) => (
         <div
           key={placeholder.key}
           className="absolute rounded-xl font-mono transition-opacity duration-200"
@@ -132,7 +136,9 @@ export const RectCanvas = observer(function RectCanvas() {
 
       {neverActive ? <NeverLegend /> : null}
 
-      {!hasRects && !universeActive && !neverActive ? (
+      {hasse ? <HasseView layout={hasse} /> : null}
+
+      {!hasContent && !universeActive && !neverActive ? (
         <p className="absolute inset-0 flex items-center justify-center text-base text-(--color-ink-soft)">
           {settings.t('canvas.emptyHint')}
         </p>

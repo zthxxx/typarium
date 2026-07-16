@@ -1,7 +1,7 @@
 import { computed, makeAutoObservable } from 'mobx'
-import { computeRectLayout } from '#/core/layout/index.ts'
+import { computeCanvasLayout } from '#/core/layout/index.ts'
 import { MIN_VIEWPORT } from '#/core/layout/constants.ts'
-import type { Box, EntityRect, RectLayoutResult } from '#/core/layout/types.ts'
+import type { Box, CanvasLayout, EntityRect } from '#/core/layout/types.ts'
 import type { AnalysisService } from '#/services/analysis.service.ts'
 import type { TypeEntity } from '#/core/set-model/types.ts'
 
@@ -64,10 +64,10 @@ export class VisualizationStore {
     return this.entities.filter((entity) => entity.special === 'empty')
   }
 
-  get layout(): RectLayoutResult | null {
+  get layout(): CanvasLayout | null {
     const result = this.analysis.lastGoodResult
     if (!result) return null
-    return computeRectLayout({
+    return computeCanvasLayout({
       entities: result.entities,
       relations: result.relations,
       viewport: { width: this.viewportWidth, height: this.viewportHeight },
@@ -121,7 +121,7 @@ export class VisualizationStore {
     const byId = new Map(this.entities.map((entity) => [entity.id, entity]))
     const items: Array<TooltipItem> = []
 
-    if (layout) {
+    if (layout && layout.mode === 'euler') {
       for (const universeId of layout.universeIds) {
         const entity = byId.get(universeId)
         if (entity) {
@@ -151,16 +151,16 @@ export class VisualizationStore {
 
     // The ∅ row appears only while never is actually displayed — either
     // toggled as a preset or some export resolved to the empty set.
-    const onPlaceholder = (layout?.placeholders ?? []).some((placeholder) =>
-      contains(placeholder.box, x, y),
-    )
+    const onPlaceholder =
+      layout?.mode === 'euler' &&
+      layout.placeholders.some((placeholder) => contains(placeholder.box, x, y))
     return { items, onNever: this.neverDisplayed, onPlaceholder }
   }
 
   /** Whether a point falls inside some rectangle body (vs background). */
   rectAt(x: number, y: number): EntityRect | null {
     const layout = this.layout
-    if (!layout) return null
+    if (!layout || layout.mode !== 'euler') return null
     let innermost: EntityRect | null = null
     for (const rect of layout.rects) {
       if (contains(rect.outer, x, y)) {
