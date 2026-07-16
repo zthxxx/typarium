@@ -186,7 +186,7 @@ function IconButton({
         ref={ref}
         type="button"
         aria-label={label}
-        className="rounded-lg border-2 border-(--color-ink) bg-white p-1 text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none"
+        className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none"
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -235,8 +235,8 @@ function MenuButton({
         aria-label={label}
         className={
           icon
-            ? 'rounded-lg border-2 border-(--color-ink) bg-white p-1 text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none'
-            : 'rounded-lg border-2 border-(--color-ink) bg-white px-2.5 py-0.5 font-mono text-xs font-bold text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none'
+            ? 'flex h-7 w-7 items-center justify-center rounded-lg border-2 border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none'
+            : 'flex h-7 items-center rounded-lg border-2 border-(--color-ink) bg-white px-2.5 font-mono text-xs font-bold text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none'
         }
         onClick={() => setOpen((value) => !value)}
         onMouseEnter={() => setHovered(true)}
