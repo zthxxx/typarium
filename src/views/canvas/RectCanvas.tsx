@@ -92,13 +92,15 @@ export const RectCanvas = observer(function RectCanvas() {
       {layout?.placeholders.map((placeholder) => (
         <div
           key={placeholder.key}
-          className="absolute rounded-xl font-mono"
+          className="absolute rounded-xl font-mono transition-opacity duration-200"
           style={{
             left: placeholder.box.x,
             top: placeholder.box.y,
             width: placeholder.box.width,
             height: placeholder.box.height,
             background: 'rgba(143, 149, 158, 0.08)',
+            // The ??? hint dims together with non-highlighted entities.
+            opacity: viz.activeEntityId !== null ? 0.3 : 1,
           }}
         >
           {/* SVG stroke instead of CSS dashed: dash gap is tunable —

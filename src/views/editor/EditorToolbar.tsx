@@ -67,13 +67,23 @@ export const EditorToolbar = observer(function EditorToolbar() {
   )
 })
 
+/** Fixed compiler baseline (read-only): every type computation runs on
+ * these options; `strict` is non-negotiable (product rule). */
+const FIXED_COMPILER_ROWS: Array<[string, string]> = [
+  ['isolatedModules', 'true'],
+  ['strict', 'true'],
+  ['target', 'ESNext'],
+  ['module', 'ESNext'],
+  ['lib', 'DOM, DOM.Iterable, ESNext, react, react-dom'],
+]
+
 /** Editor-config popover body: word wrap + formatter style knobs. */
 const EditorConfigPanel = observer(function EditorConfigPanel() {
   const settings = useService(SettingsService)
   const config = settings.editorConfig
 
   return (
-    <div className="flex w-56 flex-col gap-2.5 rounded-xl border-2 border-(--color-ink) bg-white p-3 font-mono text-xs shadow-(--shadow-sticker)">
+    <div className="flex w-64 flex-col gap-2.5 rounded-xl border-2 border-(--color-ink) bg-white p-3 font-mono text-xs shadow-(--shadow-sticker)">
       <ToggleRow
         label={settings.t('config.wordWrap')}
         checked={config.wordWrap}
@@ -133,6 +143,22 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
           }}
         />
       </label>
+
+      <div className="mt-1 border-t-2 border-dashed border-(--color-line) pt-2">
+        <span className="mb-1.5 block font-bold text-(--color-ink-soft)">
+          compilerOptions
+        </span>
+        <ul className="flex flex-col gap-1 opacity-70">
+          {FIXED_COMPILER_ROWS.map(([key, value]) => (
+            <li key={key} className="flex items-baseline justify-between gap-2">
+              <span>{key}</span>
+              <span className="max-w-36 text-right break-words text-(--color-ink-soft)">
+                {value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 })

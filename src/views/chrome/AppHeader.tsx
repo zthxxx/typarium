@@ -49,7 +49,7 @@ export const AppHeader = observer(function AppHeader({
             type="button"
             aria-label={settings.t('header.language')}
             aria-expanded={localeOpen}
-            className="flex items-center gap-1 rounded-full border-2 border-(--color-ink) bg-white px-2.5 py-1 font-mono text-xs font-bold shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+            className="flex h-[30px] items-center gap-1 rounded-full border-2 border-(--color-ink) bg-white px-2.5 font-mono text-xs font-bold shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
             onClick={() => setLocaleOpen((open) => !open)}
           >
             <LanguageIcon className="h-4 w-4" aria-hidden="true" />
@@ -89,7 +89,7 @@ export const AppHeader = observer(function AppHeader({
 
         <button
           type="button"
-          className="rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 py-1 text-sm font-bold whitespace-nowrap text-white shadow-[0_3px_0_var(--color-brand-deep)] transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+          className="flex h-[30px] items-center rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 text-sm font-bold whitespace-nowrap text-white shadow-[0_3px_0_var(--color-brand-deep)] transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
           onClick={() => {
             // One click, one link: always share WITH the editor content.
             onShare(true)
