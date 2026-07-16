@@ -1,6 +1,7 @@
 import { Bars3BottomLeftIcon, Cog6ToothIcon } from '@heroicons/react/20/solid'
 import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
+import { AnalysisService } from '#/services/analysis.service.ts'
 import { EditorService } from '#/services/editor.service.ts'
 import { PresetService } from '#/services/preset.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
@@ -67,19 +68,10 @@ export const EditorToolbar = observer(function EditorToolbar() {
   )
 })
 
-/** Fixed compiler baseline (read-only): every type computation runs on
- * these options; `strict` is non-negotiable (product rule). */
-const FIXED_COMPILER_ROWS: Array<[string, string]> = [
-  ['isolatedModules', 'true'],
-  ['strict', 'true'],
-  ['target', 'ESNext'],
-  ['module', 'ESNext'],
-  ['lib', 'DOM, DOM.Iterable, ESNext, react, react-dom'],
-]
-
 /** Editor-config popover body: word wrap + formatter style knobs. */
 const EditorConfigPanel = observer(function EditorConfigPanel() {
   const settings = useService(SettingsService)
+  const analysis = useService(AnalysisService)
   const config = settings.editorConfig
 
   return (
@@ -149,7 +141,7 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
           compilerOptions
         </span>
         <ul className="flex flex-col gap-1 opacity-70">
-          {FIXED_COMPILER_ROWS.map(([key, value]) => (
+          {analysis.compilerOptionsDisplay.map(([key, value]) => (
             <li key={key} className="flex items-baseline justify-between gap-2">
               <span>{key}</span>
               <span className="max-w-36 text-right break-words text-(--color-ink-soft)">

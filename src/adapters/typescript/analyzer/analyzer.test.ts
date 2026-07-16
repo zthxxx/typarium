@@ -272,6 +272,69 @@ describe('ts analyzer', () => {
     expect(relationOf(first, 'A', 'preset:number')).toBe('unrelated')
   })
 
+  test('object family: soundness correction splits the fake merge', () => {
+    // Raw assignability makes all four mutually assignable (unsound,
+    // non-transitive); the witness correction must recover TWO nested
+    // equivalence classes: {Object ≡ {}} ⊃ {object ≡ Record<string, any>}.
+    const result = analyzer.analyze(
+      [
+        'export type Big = Object',
+        'export type Braces = {}',
+        'export type Obj = object',
+        'export type Rec = Record<string, any>',
+      ].join('\n'),
+      [],
+    )
+    expect(relationOf(result, 'Big', 'Braces')).toBe('equivalent')
+    expect(relationOf(result, 'Obj', 'Rec')).toBe('equivalent')
+    expect(relationOf(result, 'Obj', 'Braces')).toBe('subset')
+    expect(relationOf(result, 'Obj', 'Big')).toBe('subset')
+    expect(relationOf(result, 'Rec', 'Braces')).toBe('subset')
+    expect(relationOf(result, 'Rec', 'Big')).toBe('subset')
+  })
+
+  test('object family: {} is NOT covered by object alone', () => {
+    // Raw `{} ⊆ object` holds, but the string witness lives in {} and
+    // not in object — coverage must respect the witness discipline.
+    const result = analyzer.analyze(
+      ['export type Braces = {}', 'export type Obj = object'].join('\n'),
+      [],
+    )
+    expect(coveredOf(result, 'Braces')).toBe(false)
+  })
+
+  test('teaching matrix survives the soundness correction', () => {
+    const result = analyzer.analyze(
+      [
+        "export type Fruit = 'apple' | 'banana'",
+        'export type Text = string',
+        'export type TextOrNumber = string | number',
+      ].join('\n'),
+      [{ name: 'string', typeText: 'string' }],
+    )
+    expect(relationOf(result, 'Fruit', 'Text')).toBe('subset')
+    expect(relationOf(result, 'Text', 'TextOrNumber')).toBe('subset')
+    expect(relationOf(result, 'Text', 'preset:string')).toBe('equivalent')
+    expect(coveredOf(result, 'TextOrNumber')).toBe(false)
+  })
+
+  test('twoslash: ^? query resolves the type at position', () => {
+    const queries = analyzer.twoslashQueries('const a = 1\n//    ^?')
+    expect(queries.length).toBe(1)
+    expect(queries[0].text).toContain('const a: 1')
+    expect(queries[0].line).toBe(0)
+  })
+
+  test('twoslash: unmarked source short-circuits to empty', () => {
+    expect(analyzer.twoslashQueries('const a = 1')).toEqual([])
+  })
+
+  test('twoslash: broken code never throws', () => {
+    expect(analyzer.twoslashQueries('const a: unknwon = 1\n//    ^?')).toEqual(
+      expect.any(Array),
+    )
+  })
+
   test('broken virtual preset drops only that entity', () => {
     const result = analyzer.analyze('export type A = string', [
       { name: 'good', typeText: 'number' },

@@ -8,6 +8,8 @@ import type { PersistenceService } from '#/services/persistence.service.ts'
 const ANALYZE_DEBOUNCE_MS = 1_200
 /** Squiggles should feel editor-grade: check runs well before analysis. */
 const CHECK_DEBOUNCE_MS = 350
+/** One deferred re-check after type acquisition has had time to land. */
+const ACQUISITION_RETRY_MS = 5_000
 /** Saves are cheaper than analysis; persist keystrokes almost immediately. */
 const SAVE_DEBOUNCE_MS = 300
 
@@ -24,6 +26,7 @@ export class EditorService {
   private analyzeTimer: ReturnType<typeof setTimeout> | null = null
   private checkTimer: ReturnType<typeof setTimeout> | null = null
   private checkTicket = 0
+  private retriedForCode: string | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private virtualTypesGetter: () => Array<VirtualType> = () => []
   private activePresetsGetter: () => Array<string> = () => []
@@ -39,6 +42,7 @@ export class EditorService {
       | 'analyzeTimer'
       | 'checkTimer'
       | 'checkTicket'
+      | 'retriedForCode'
       | 'saveTimer'
       | 'virtualTypesGetter'
       | 'activePresetsGetter'
@@ -48,6 +52,7 @@ export class EditorService {
       analyzeTimer: false,
       checkTimer: false,
       checkTicket: false,
+      retriedForCode: false,
       saveTimer: false,
       virtualTypesGetter: false,
       activePresetsGetter: false,
@@ -134,6 +139,20 @@ export class EditorService {
         runInAction(() => {
           this.editorDiagnostics = diagnostics
         })
+        // Type acquisition may land after this pass: unresolved-module
+        // diagnostics get ONE deferred re-run so freshly fetched types
+        // clear the squiggles and join the canvas without a keystroke.
+        const unresolved = diagnostics.some((diagnostic) =>
+          diagnostic.message.includes('Cannot find module'),
+        )
+        if (unresolved && this.retriedForCode !== source) {
+          this.retriedForCode = source
+          setTimeout(() => {
+            if (this.code !== source) return
+            this.scheduleCheck()
+            void this.analysis.analyze(source, this.virtualTypesGetter())
+          }, ACQUISITION_RETRY_MS)
+        }
       })
     }, CHECK_DEBOUNCE_MS)
   }

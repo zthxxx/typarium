@@ -13,11 +13,14 @@ import type {
   RectLayoutInput,
   RectLayoutResult,
 } from '#/core/layout/types.ts'
-import type {
-  EntityId,
-  PairRelation,
-  TypeEntity,
-} from '#/core/set-model/types.ts'
+import {
+  buildSupersets,
+  classKey,
+  mergeEquivalent,
+  minimalSupersets,
+} from '#/core/layout/containment.ts'
+import type { EntityClass } from '#/core/layout/containment.ts'
+import type { EntityId, PairRelation } from '#/core/set-model/types.ts'
 
 /**
  * Rectangular containment layout, v3 (ADR-0012 + union coverage +
@@ -96,12 +99,6 @@ export function computeRectLayout(input: RectLayoutInput): RectLayoutResult {
   return { rects, universeIds, emptyIds, placeholders, warnings }
 }
 
-interface EntityClass {
-  /** Members in declaration order; the first one names the class. */
-  members: Array<TypeEntity>
-  orderIndex: number
-}
-
 /** Two sibling parents whose rectangles overlap around shared children. */
 interface OverlapPair {
   left: EntityClass
@@ -116,66 +113,13 @@ interface Dag {
   /** Pair membership of a parent class, if any. */
   pairOf: Map<EntityClass, OverlapPair>
   coveredOf: Map<EntityClass, boolean>
-}
-
-function mergeEquivalent(
-  drawable: Array<TypeEntity>,
-  relations: Array<PairRelation>,
-  order: Map<EntityId, number>,
-): Array<EntityClass> {
-  const drawableIds = new Set(drawable.map((entity) => entity.id))
-  const parent = new Map<EntityId, EntityId>(
-    drawable.map((entity) => [entity.id, entity.id]),
-  )
-
-  const find = (id: EntityId): EntityId => {
-    let root = id
-    while (parent.get(root) !== root) root = parent.get(root) ?? root
-    // Path compression keeps repeated finds cheap.
-    let cursor = id
-    while (parent.get(cursor) !== root) {
-      const next = parent.get(cursor) ?? root
-      parent.set(cursor, root)
-      cursor = next
-    }
-    return root
-  }
-
-  // Union by declaration order: the earliest-declared member always
-  // becomes the root, so the outcome is independent of relation order.
-  for (const relation of relations) {
-    if (relation.kind !== 'equivalent') continue
-    if (!drawableIds.has(relation.a) || !drawableIds.has(relation.b)) continue
-    const rootA = find(relation.a)
-    const rootB = find(relation.b)
-    if (rootA === rootB) continue
-    const [earlier, later] =
-      (order.get(rootA) ?? 0) <= (order.get(rootB) ?? 0)
-        ? [rootA, rootB]
-        : [rootB, rootA]
-    parent.set(later, earlier)
-  }
-
-  const byRoot = new Map<EntityId, Array<TypeEntity>>()
-  for (const entity of drawable) {
-    const root = find(entity.id)
-    const bucket = byRoot.get(root)
-    if (bucket) {
-      bucket.push(entity)
-    } else {
-      byRoot.set(root, [entity])
-    }
-  }
-
-  const classes = [...byRoot.values()].map((members) => {
-    members.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
-    return {
-      members,
-      orderIndex: order.get(members[0].id) ?? 0,
-    }
-  })
-  classes.sort((a, b) => a.orderIndex - b.orderIndex)
-  return classes
+  /**
+   * Places where the rectangle paradigm could NOT faithfully express
+   * the containment DAG and fell back to a single parent. Non-empty
+   * means the drawing drops real containment edges — the canvas-level
+   * entry point switches to the Hasse engine instead (ADR-0017).
+   */
+  faithfulnessViolations: Array<string>
 }
 
 type Attachment =
@@ -188,21 +132,8 @@ function buildDag(
   relations: Array<PairRelation>,
   warnings: Array<string>,
 ): Dag {
-  // supersetsOf.get(x) contains y ⟺ x ⊂ y (strict; classes merged).
-  const classOf = new Map<EntityId, EntityClass>()
-  for (const cls of classes) {
-    for (const member of cls.members) classOf.set(member.id, cls)
-  }
-  const supersetsOf = new Map<EntityClass, Set<EntityClass>>(
-    classes.map((cls) => [cls, new Set<EntityClass>()]),
-  )
-  for (const relation of relations) {
-    const classA = classOf.get(relation.a)
-    const classB = classOf.get(relation.b)
-    if (!classA || !classB || classA === classB) continue
-    if (relation.kind === 'subset') supersetsOf.get(classA)?.add(classB)
-    if (relation.kind === 'superset') supersetsOf.get(classB)?.add(classA)
-  }
+  const supersetsOf = buildSupersets(classes, relations)
+  const faithfulnessViolations: Array<string> = []
 
   // Along any containment chain the subset has strictly more supersets,
   // so this order processes every parent before its children.
@@ -224,15 +155,7 @@ function buildDag(
   }
 
   for (const cls of topo) {
-    const supersets = [...(supersetsOf.get(cls) ?? [])]
-    const minimal = supersets.filter(
-      (candidate) =>
-        !supersets.some(
-          (other) =>
-            other !== candidate && supersetsOf.get(other)?.has(candidate),
-        ),
-    )
-    minimal.sort((a, b) => a.orderIndex - b.orderIndex)
+    const minimal = minimalSupersets(cls, supersetsOf)
 
     if (minimal.length === 0) {
       attachment.set(cls, { kind: 'root' })
@@ -264,15 +187,15 @@ function buildDag(
         attachment.set(cls, { kind: 'band', pair })
         continue
       }
-      warnings.push(
-        `entity "${cls.members[0].name}" has 2 parents in incompatible positions; drawing inside the earliest only`,
-      )
+      const violation = `entity "${cls.members[0].name}" has 2 parents in incompatible positions; drawing inside the earliest only`
+      faithfulnessViolations.push(violation)
+      warnings.push(violation)
       attachment.set(cls, { kind: 'single', parent: minimal[0] })
       continue
     }
-    warnings.push(
-      `entity "${cls.members[0].name}" has ${minimal.length} parents; drawing inside the earliest only`,
-    )
+    const violation = `entity "${cls.members[0].name}" has ${minimal.length} parents; drawing inside the earliest only`
+    faithfulnessViolations.push(violation)
+    warnings.push(violation)
     attachment.set(cls, { kind: 'single', parent: minimal[0] })
   }
 
@@ -329,7 +252,24 @@ function buildDag(
     ]),
   )
 
-  return { roots, childrenOf, pairOf, coveredOf }
+  return { roots, childrenOf, pairOf, coveredOf, faithfulnessViolations }
+}
+
+/**
+ * Faithfulness probe for the canvas-level engine switch: rebuilds the
+ * containment DAG exactly as the rectangle engine would and reports the
+ * places where rectangles had to drop containment edges. Empty result
+ * means the rectangle drawing is a faithful Euler representation.
+ */
+export function probeRectFaithfulness(input: RectLayoutInput): Array<string> {
+  const drawable = input.entities.filter((entity) => entity.special === 'none')
+  if (drawable.length === 0) return []
+  const order = new Map<EntityId, number>(
+    input.entities.map((entity, index) => [entity.id, index]),
+  )
+  const classes = mergeEquivalent(drawable, input.relations, order)
+  const scratch: Array<string> = []
+  return buildDag(classes, input.relations, scratch).faithfulnessViolations
 }
 
 /**
@@ -634,10 +574,7 @@ function layoutOwnChildren(
     {
       covered,
       extraSlot: !covered,
-      placeholderKey: cls.members
-        .map((member) => member.id)
-        .sort()
-        .join('+'),
+      placeholderKey: classKey(cls),
     },
     depth + 1,
     rects,
@@ -661,10 +598,7 @@ function pushRect(
     height: Math.max(0, outer.height - inset * 2 - LABEL_STRIP),
   }
   const rect: EntityRect = {
-    key: cls.members
-      .map((member) => member.id)
-      .sort()
-      .join('+'),
+    key: classKey(cls),
     entityIds: cls.members.map((member) => member.id),
     labels: cls.members.map((member) => member.name),
     outer,

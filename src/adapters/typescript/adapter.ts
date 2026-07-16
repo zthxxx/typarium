@@ -1,4 +1,5 @@
 import { wrap } from 'comlink'
+import { FIXED_COMPILER_OPTIONS_DISPLAY } from '#/adapters/typescript/compiler-options-display.ts'
 import { typescriptPresets } from '#/adapters/typescript/presets.ts'
 import type { Remote } from 'comlink'
 import type { AnalysisWorkerApi } from '#/adapters/typescript/analysis.worker.ts'
@@ -45,6 +46,7 @@ export function createTypescriptAdapter(): LanguageAdapter {
     presets: typescriptPresets,
     sampleSource: SAMPLE_SOURCE,
     engineLabel: ENGINE_LABEL,
+    compilerOptionsDisplay: FIXED_COMPILER_OPTIONS_DISPLAY,
 
     analyze: (source, virtualTypes) => remote.analyze(source, virtualTypes),
     check: (source) => remote.check(source),
@@ -52,6 +54,7 @@ export function createTypescriptAdapter(): LanguageAdapter {
     completions: (source, offset, preferences) =>
       remote.completions(source, offset, preferences),
     format: (source, options) => remote.format(source, options),
+    twoslashQueries: (source) => remote.twoslashQueries(source),
     dispose: () => worker.terminate(),
   }
 }

@@ -24,6 +24,8 @@ export interface LanguageAdapter {
   readonly sampleSource: string
   /** Human-readable engine identity for the footer. */
   readonly engineLabel: string
+  /** Read-only compiler baseline rows for the config popover. */
+  readonly compilerOptionsDisplay: Array<[string, string]>
 
   /**
    * Analyze the editor source plus the toggled virtual preset types.
@@ -46,7 +48,19 @@ export interface LanguageAdapter {
   ) => Promise<Array<CompletionEntry>>
   /** Format the whole document per the user's style options. */
   format: (source: string, options: FormatOptions) => Promise<string>
+  /** Twoslash `// ^?` query results for inline type display. */
+  twoslashQueries: (source: string) => Promise<Array<TwoslashQuery>>
   dispose: () => void
+}
+
+/** One resolved `// ^?` annotation. */
+export interface TwoslashQuery {
+  /** Offset of the queried position in the source. */
+  offset: number
+  /** Zero-based line of the queried token. */
+  line: number
+  /** The type text the annotation resolves to. */
+  text: string
 }
 
 /** Style knobs shared by the formatter and completion suggestions. */

@@ -160,6 +160,13 @@ body {
   }
 }
 
+/* Twoslash `^?` query results: quiet inline ghost text. */
+.twoslash-ghost {
+  color: var(--color-ink-soft) !important;
+  opacity: 0.75;
+  font-style: italic;
+}
+
 /* Focus visibility: game-feel thick focus ring in brand color */
 :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-brand) 60%, transparent);

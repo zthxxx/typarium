@@ -7,18 +7,22 @@ import type {
   FormatOptions,
 } from '#/core/analysis/adapter.ts'
 
+import { createTypeAcquirer } from '#/adapters/typescript/analyzer/type-acquisition.ts'
+import type { TypeAcquirer } from '#/adapters/typescript/analyzer/type-acquisition.ts'
+
 /**
  * Web Worker hosting the single TypeScript implementation (ADR-0015):
- * canvas analysis AND editor language features run here. Lib files are
- * bundled as lazy raw chunks (no CDN dependency): only the ES2022
- * chain — DOM types stay out of the type universe.
+ * canvas analysis AND editor language features run here. The FULL lib
+ * set ships as lazy raw chunks (no CDN dependency) — the fixed
+ * compiler baseline includes DOM + ESNext.
  */
-const libModules = import.meta.glob(
-  '/node_modules/typescript/lib/lib.{es5,es2015,es2016,es2017,es2018,es2019,es2020,es2021,es2022,decorators,decorators.legacy}*.d.ts',
-  { query: '?raw', import: 'default' },
-)
+const libModules = import.meta.glob('/node_modules/typescript/lib/lib.*.d.ts', {
+  query: '?raw',
+  import: 'default',
+})
 
 let analyzerPromise: Promise<TsAnalyzer> | null = null
+let acquirer: TypeAcquirer | null = null
 
 function getAnalyzer(): Promise<TsAnalyzer> {
   analyzerPromise ??= (async () => {
@@ -29,17 +33,28 @@ function getAnalyzer(): Promise<TsAnalyzer> {
         libFiles.set(`/${fileName}`, await load())
       }),
     )
-    return createTsAnalyzer({ libFiles })
+    const analyzer = createTsAnalyzer({ libFiles })
+    acquirer = createTypeAcquirer({
+      receiveFile: (path, content) => analyzer.addLibraryFile(path, content),
+    })
+    return analyzer
   })()
   return analyzerPromise
 }
 
+/** Fetch typings for bare imports before any type computation runs. */
+async function withTypes(source: string): Promise<TsAnalyzer> {
+  const analyzer = await getAnalyzer()
+  await acquirer?.ensureTypesFor(source)
+  return analyzer
+}
+
 const api = {
   async analyze(source: string, virtualTypes: Array<VirtualType>) {
-    return (await getAnalyzer()).analyze(source, virtualTypes)
+    return (await withTypes(source)).analyze(source, virtualTypes)
   },
   async check(source: string) {
-    return (await getAnalyzer()).check(source)
+    return (await withTypes(source)).check(source)
   },
   async quickInfo(source: string, offset: number) {
     return (await getAnalyzer()).quickInfo(source, offset)
@@ -50,6 +65,9 @@ const api = {
     preferences?: CompletionPreferences,
   ) {
     return (await getAnalyzer()).completions(source, offset, preferences)
+  },
+  async twoslashQueries(source: string) {
+    return (await getAnalyzer()).twoslashQueries(source)
   },
   async format(source: string, options: FormatOptions): Promise<string> {
     // Prettier standalone: the formatter matches the editor-config

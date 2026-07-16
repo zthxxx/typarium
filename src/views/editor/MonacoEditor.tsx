@@ -115,6 +115,12 @@ export const MonacoEditor = observer(function MonacoEditor() {
       )
 
       editorRef.current = editor
+      if (import.meta.env.DEV) {
+        ;(window as unknown as Record<string, unknown>).__typariumEditor = {
+          editor,
+          monaco,
+        }
+      }
     })
 
     return () => {
@@ -175,6 +181,62 @@ export const MonacoEditor = observer(function MonacoEditor() {
       )
     })
   }, [editorService])
+
+  // Twoslash `// ^?` queries render as end-of-line ghost text, the
+  // TS-Playground behavior. Runs on the checked code (350ms debounce)
+  // and only when a query marker is present. Uses a decorations
+  // collection — editor.deltaDecorations is a deprecated no-op in
+  // monaco 0.55.
+  const twoslashCollection =
+    useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
+  useEffect(() => {
+    return autorun(() => {
+      // Track the same debounced signal the markers use.
+      void editorService.editorDiagnostics
+      const code = editorService.code
+      const monaco = monacoRef.current
+      const editor = editorRef.current
+      const model = editor?.getModel()
+      if (!monaco || !editor || !model) return
+      twoslashCollection.current ??= editor.createDecorationsCollection()
+      if (!code.includes('^?')) {
+        twoslashCollection.current.set([])
+        return
+      }
+      void analysis
+        .twoslashQueries(code)
+        .then((queries) => {
+          const currentModel = editorRef.current?.getModel()
+          if (!currentModel || currentModel.getValue() !== code) return
+          twoslashCollection.current?.set(
+            queries.map((query) => {
+              const lineNumber = Math.min(
+                query.line + 1,
+                currentModel.getLineCount(),
+              )
+              const column = currentModel.getLineMaxColumn(lineNumber)
+              return {
+                range: new monaco.Range(lineNumber, column, lineNumber, column),
+                options: {
+                  // Zero-length ranges are dropped by monaco's injected
+                  // text pipeline unless showIfCollapsed is set.
+                  showIfCollapsed: true,
+                  after: {
+                    content: `  ${query.text.split('\n')[0]}`,
+                    inlineClassName: 'twoslash-ghost',
+                  },
+                },
+              }
+            }),
+          )
+        })
+        .catch((error: unknown) => {
+          if (import.meta.env.DEV) {
+            console.error('[typarium] twoslash decoration failed', error)
+          }
+        })
+    })
+  }, [editorService, analysis])
 
   return (
     <div

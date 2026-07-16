@@ -37,6 +37,10 @@ export class AnalysisService {
     return this.adapter.id
   }
 
+  get compilerOptionsDisplay(): Array<[string, string]> {
+    return this.adapter.compilerOptionsDisplay
+  }
+
   /** Editor language features, delegated to the single adapter worker. */
   check(source: string): Promise<Array<SourceDiagnostic>> {
     return this.adapter.check(source)
@@ -56,6 +60,10 @@ export class AnalysisService {
 
   format(source: string, options: FormatOptions): Promise<string> {
     return this.adapter.format(source, options)
+  }
+
+  twoslashQueries(source: string) {
+    return this.adapter.twoslashQueries(source)
   }
 
   async analyze(

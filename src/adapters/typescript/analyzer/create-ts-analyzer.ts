@@ -1,14 +1,18 @@
 import * as ts from 'typescript'
+
 import {
   createSystem,
   createVirtualTypeScriptEnvironment,
 } from '@typescript/vfs'
+import { createTwoslasher } from 'twoslash'
+import type { TwoslashInstance } from 'twoslash'
 import type { VirtualTypeScriptEnvironment } from '@typescript/vfs'
 
 import { scanExports } from '#/adapters/typescript/analyzer/scan-exports.ts'
 import type {
   CompletionEntry,
   CompletionPreferences,
+  TwoslashQuery,
   VirtualType,
 } from '#/core/analysis/adapter.ts'
 import type {
@@ -18,6 +22,8 @@ import type {
   SourceDiagnostic,
   TypeEntity,
 } from '#/core/set-model/types.ts'
+
+export { FIXED_COMPILER_OPTIONS_DISPLAY } from '#/adapters/typescript/compiler-options-display.ts'
 
 /**
  * The v3 analysis engine (ADR-0015): ONE TypeScript implementation
@@ -45,6 +51,10 @@ export interface TsAnalyzer {
     offset: number,
     preferences?: CompletionPreferences,
   ) => Array<CompletionEntry>
+  /** Twoslash `// ^?` queries; skips the twoslasher when unmarked. */
+  twoslashQueries: (source: string) => Array<TwoslashQuery>
+  /** Inject an acquired declaration file (ATA) into the project. */
+  addLibraryFile: (path: string, content: string) => void
   dispose: () => void
 }
 
@@ -55,23 +65,53 @@ const PROBE_FILE = '/probe.ts'
 const COMPLETION_LIMIT = 60
 
 /**
- * `strictFunctionTypes` is load-bearing — the contravariance teaching
- * demos rely on function parameters being checked contravariantly.
- * No DOM lib: the type universe stays platform-neutral.
+ * The FIXED compiler baseline (product rule): every type computation —
+ * canvas analysis, diagnostics, hover, completions — runs under these
+ * options, and none of them is user-configurable. `strict` (and with
+ * it `strictFunctionTypes`, load-bearing for the contravariance demos)
+ * must never be weakened.
  */
 const COMPILER_OPTIONS: ts.CompilerOptions = {
+  isolatedModules: true,
   strict: true,
   strictFunctionTypes: true,
-  target: ts.ScriptTarget.ES2022,
+  target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
   allowImportingTsExtensions: true,
-  lib: ['lib.es2022.d.ts'],
-  types: [],
+  lib: ['lib.dom.d.ts', 'lib.dom.iterable.d.ts', 'lib.esnext.d.ts'],
   noEmit: true,
   skipLibCheck: true,
   noUnusedLocals: false,
 }
+
+/**
+ * Read-only display rows for the editor-config panel. The `lib` row
+ * mirrors the product spec verbatim; `react` / `react-dom` are not TS
+ * libs — their typings arrive through automatic type acquisition the
+ * moment the code imports them.
+ */
+/**
+ * Sentinel witnesses backing the soundness correction: TypeScript's
+ * assignability is deliberately unsound and NOT transitive (`{}` is
+ * mutually assignable with `object`, yet `string ⊆ {}` while
+ * `string ⊄ object`), so a raw pairwise matrix can merge sets that
+ * differ. A claimed A ⊆ B must also be monotone over every witness:
+ * whatever A accepts, B must accept.
+ */
+const SENTINEL_WITNESSES: Array<string> = [
+  'string',
+  'number',
+  'boolean',
+  'bigint',
+  'symbol',
+  'null',
+  'undefined',
+  '{ __probe: string }',
+  '() => void',
+  'unknown[]',
+  'Record<string, unknown>',
+]
 
 export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
   const files = new Map<string, string>()
@@ -142,9 +182,15 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     const virtualAliases = virtualTypes.map(
       (virtual, index) => `export type __V${index} = ${virtual.typeText}`,
     )
-    const probeLines = [importLine, ...codeAliases, ...virtualAliases].filter(
-      (line) => line !== '',
+    const witnessAliases = SENTINEL_WITNESSES.map(
+      (text, index) => `export type __W${index} = ${text}`,
     )
+    const probeLines = [
+      importLine,
+      ...codeAliases,
+      ...virtualAliases,
+      ...witnessAliases,
+    ].filter((line) => line !== '')
     setFile(PROBE_FILE, probeLines.join('\n'))
 
     const userErrors = mainDiagnostics()
@@ -267,17 +313,36 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     const drawable = subjects.filter(
       (subject) => subject.entity.special === 'none',
     )
+
+    // Witness set: every displayed type plus the fixed sentinels.
+    // acceptance[i][w] = "does subject i accept witness w".
+    const witnessTypes: Array<ts.Type> = [
+      ...drawable.map((subject) => subject.type),
+    ]
+    SENTINEL_WITNESSES.forEach((_, index) => {
+      const type = aliasTypes.get(`__W${index}`)
+      if (type) witnessTypes.push(type)
+    })
+    const acceptance: Array<Array<boolean>> = drawable.map((subject) =>
+      witnessTypes.map((witness) =>
+        checker.isTypeAssignableTo(witness, subject.type),
+      ),
+    )
+    // A ⊆ B is unsound-safe only when monotone: ∀w accepted by A,
+    // B accepts w too. This is what refutes `{} ⊆ object` (witness
+    // `string`) while keeping every sound containment intact.
+    const monotone = (a: number, b: number): boolean =>
+      acceptance[a].every((accepted, w) => !accepted || acceptance[b][w])
+
     const relations: Array<PairRelation> = []
     for (let i = 0; i < drawable.length; i += 1) {
       for (let j = i + 1; j < drawable.length; j += 1) {
-        const forward = checker.isTypeAssignableTo(
-          drawable[i].type,
-          drawable[j].type,
-        )
-        const backward = checker.isTypeAssignableTo(
-          drawable[j].type,
-          drawable[i].type,
-        )
+        const forward =
+          checker.isTypeAssignableTo(drawable[i].type, drawable[j].type) &&
+          monotone(i, j)
+        const backward =
+          checker.isTypeAssignableTo(drawable[j].type, drawable[i].type) &&
+          monotone(j, i)
         const kind: RelationKind =
           forward && backward
             ? 'equivalent'
@@ -367,13 +432,35 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       )
     }
 
+    // Witness types must come from THIS program: pass-one ts.Types are
+    // invalidated by the probe-file update above.
+    const freshWitnesses: Array<ts.Type> = []
+    for (const subject of drawable) {
+      const type = freshTypes.get(subject.aliasName)
+      if (type) freshWitnesses.push(type)
+    }
+    SENTINEL_WITNESSES.forEach((_, index) => {
+      const type = freshTypes.get(`__W${index}`)
+      if (type) freshWitnesses.push(type)
+    })
+
     candidates.forEach((subject, index) => {
       const target = freshTypes.get(subject.aliasName)
       const union = freshTypes.get(`__U${index}`)
       if (!target || !union) return
-      subject.entity.coveredBySubsets = checker.isTypeAssignableTo(
-        target,
-        union,
+      const rawCovered = checker.isTypeAssignableTo(target, union)
+      if (!rawCovered) {
+        subject.entity.coveredBySubsets = false
+        return
+      }
+      // Unsound-safe guard, same witness discipline as the matrix:
+      // every witness the candidate accepts must also land in the
+      // members' union — otherwise `{}` would count as covered by
+      // `object` through raw (non-transitive) assignability alone.
+      subject.entity.coveredBySubsets = freshWitnesses.every(
+        (witness) =>
+          !checker.isTypeAssignableTo(witness, target) ||
+          checker.isTypeAssignableTo(witness, union),
       )
     })
   }
@@ -422,9 +509,55 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       }))
   }
 
+  // Twoslash builds its own program per call — lazily created, cached,
+  // and only invoked when the source actually carries a `^?` marker.
+  let twoslasher: TwoslashInstance | null = null
+  const twoslashQueries = (source: string): Array<TwoslashQuery> => {
+    if (!/\/\/\s*\^\?/.test(source)) return []
+    twoslasher ??= createTwoslasher({
+      tsModule: ts,
+      fsMap: new Map(files),
+      compilerOptions: COMPILER_OPTIONS,
+    })
+    try {
+      const result = twoslasher(source, 'ts', {
+        handbookOptions: { noErrorValidation: true, noErrors: true },
+      })
+      return result.queries
+        .filter(
+          (query): query is typeof query & { text: string } =>
+            typeof query.text === 'string',
+        )
+        .map((query) => ({
+          offset: query.start,
+          line: query.line,
+          text: query.text,
+        }))
+    } catch {
+      // Twoslash failures (mid-edit broken code) must never take the
+      // editor down; the annotation simply shows nothing.
+      return []
+    }
+  }
+
+  const addLibraryFile = (path: string, content: string): void => {
+    const fileName = path.startsWith('/') ? path : `/${path}`
+    if (contents.get(fileName) === content) return
+    contents.set(fileName, content)
+    env.createFile(fileName, content)
+  }
+
   const dispose = () => {
     env.languageService.dispose()
   }
 
-  return { analyze, check, quickInfo, completions, dispose }
+  return {
+    analyze,
+    check,
+    quickInfo,
+    completions,
+    twoslashQueries,
+    addLibraryFile,
+    dispose,
+  }
 }
