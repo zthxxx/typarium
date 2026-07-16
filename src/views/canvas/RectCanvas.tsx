@@ -89,6 +89,30 @@ export const RectCanvas = observer(function RectCanvas() {
         />
       ))}
 
+      {layout?.placeholders.map((placeholder) => (
+        <div
+          key={placeholder.key}
+          className="absolute rounded-xl font-mono"
+          style={{
+            left: placeholder.box.x,
+            top: placeholder.box.y,
+            width: placeholder.box.width,
+            height: placeholder.box.height,
+            // Half the weight of entity borders: this block is a hint,
+            // not a set — fixed light gray, never from the palette.
+            border: '1.5px solid rgba(100, 106, 115, 0.45)',
+            background: 'rgba(143, 149, 158, 0.08)',
+          }}
+        >
+          <span
+            className="absolute top-1 left-2.5 text-sm font-bold"
+            style={{ color: 'rgba(100, 106, 115, 0.75)' }}
+          >
+            ???
+          </span>
+        </div>
+      ))}
+
       {neverActive ? <NeverLegend /> : null}
 
       {!hasRects && !universeActive && !neverActive ? (
@@ -109,6 +133,7 @@ export const RectCanvas = observer(function RectCanvas() {
               .filter((entity) => entity.origin === 'code')
               .map((entity) => entity.name),
           ].join(' ≡ ')}
+          otherRow={settings.t('canvas.otherTypes')}
           hostRef={hostRef}
         />
       ) : null}
@@ -185,11 +210,13 @@ function StackTooltip({
   pointer,
   stack,
   neverRow,
+  otherRow,
   hostRef,
 }: {
   pointer: { x: number; y: number }
   stack: TooltipStack
   neverRow: string
+  otherRow: string
   hostRef: RefObject<HTMLDivElement | null>
 }) {
   const host = hostRef.current?.getBoundingClientRect()
@@ -221,12 +248,22 @@ function StackTooltip({
               />
               <span className="font-bold">{item.name}</span>
               {item.typeText !== item.name ? (
-                <span className="max-w-56 truncate text-(--color-ink-soft)">
+                <span className="max-w-[28rem] truncate text-(--color-ink-soft)">
                   {item.typeText}
                 </span>
               ) : null}
             </li>
           ))}
+          {stack.onPlaceholder ? (
+            <li className="flex items-baseline gap-2 font-mono text-xs">
+              <span
+                className="h-2.5 w-2.5 shrink-0 self-center rounded-[4px] border"
+                style={{ borderColor: 'rgba(100,106,115,0.6)' }}
+              />
+              <span className="font-bold text-(--color-ink-soft)">???</span>
+              <span className="text-(--color-ink-soft)">{otherRow}</span>
+            </li>
+          ) : null}
           {stack.onNever ? (
             <li className="font-mono text-xs text-(--color-ink-soft)">
               {neverRow}

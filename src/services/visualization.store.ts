@@ -15,6 +15,8 @@ export interface TooltipStack {
   items: Array<TooltipItem>
   /** True when the pointer rests on background dots (the ∅ region). */
   onNever: boolean
+  /** True when the pointer rests on a `???` (everything-else) block. */
+  onPlaceholder: boolean
 }
 
 /**
@@ -149,7 +151,10 @@ export class VisualizationStore {
 
     // The ∅ row appears only while never is actually displayed — either
     // toggled as a preset or some export resolved to the empty set.
-    return { items, onNever: this.neverDisplayed }
+    const onPlaceholder = (layout?.placeholders ?? []).some((placeholder) =>
+      contains(placeholder.box, x, y),
+    )
+    return { items, onNever: this.neverDisplayed, onPlaceholder }
   }
 
   /** Whether a point falls inside some rectangle body (vs background). */

@@ -7,6 +7,7 @@ import {
   RING_INSET,
 } from '#/core/layout/constants.ts'
 import type {
+  PlaceholderRect,
   Box,
   EntityRect,
   RectLayoutInput,
@@ -48,7 +49,7 @@ export function computeRectLayout(input: RectLayoutInput): RectLayoutResult {
   const drawable = input.entities.filter((entity) => entity.special === 'none')
 
   if (drawable.length === 0) {
-    return { rects: [], universeIds, emptyIds, warnings }
+    return { rects: [], universeIds, emptyIds, placeholders: [], warnings }
   }
 
   const order = new Map<EntityId, number>(
@@ -76,20 +77,23 @@ export function computeRectLayout(input: RectLayoutInput): RectLayoutResult {
     universeEntities.length > 0 &&
     universeEntities.some((entity) => entity.coveredBySubsets)
   const rects: Array<EntityRect> = []
+  const placeholders: Array<PlaceholderRect> = []
   layoutContainer(
     dag.roots,
     rootBox,
     {
       covered: universeCovered,
       extraSlot: universeIds.length > 0 && !universeCovered,
+      placeholderKey: 'root',
     },
     1,
     rects,
+    placeholders,
     dag,
     warnings,
   )
 
-  return { rects, universeIds, emptyIds, warnings }
+  return { rects, universeIds, emptyIds, placeholders, warnings }
 }
 
 interface EntityClass {
@@ -370,14 +374,17 @@ const PAIR_SPREAD = 0.62
 interface ContainerMode {
   /** Container equals the union of its children: fill it exactly. */
   covered: boolean
-  /** Reserve one extra empty slot ("everything else"). */
+  /** Add an explicit `???` block ("everything else"). */
   extraSlot: boolean
+  /** Key prefix for the container's placeholder rect. */
+  placeholderKey: string
 }
 
-/** One grid occupant: a lone class, or an overlapping parent pair. */
+/** One grid occupant: a class, an overlapping pair, or the ??? block. */
 type LayoutUnit =
   | { kind: 'single'; cls: EntityClass; width: 1 }
   | { kind: 'pair'; pair: OverlapPair; width: 2 }
+  | { kind: 'placeholder'; width: 1 }
 
 function layoutContainer(
   children: Array<EntityClass>,
@@ -385,6 +392,7 @@ function layoutContainer(
   mode: ContainerMode,
   depth: number,
   rects: Array<EntityRect>,
+  placeholders: Array<PlaceholderRect>,
   dag: Dag,
   warnings: Array<string>,
 ): void {
@@ -420,11 +428,17 @@ function layoutContainer(
     }
   }
 
+  // The "everything else" space is an explicit ??? block now — with it
+  // in the grid, the cell count is exact and no rounding holes remain.
+  if (mode.extraSlot) {
+    units.push({ kind: 'placeholder', width: 1 })
+  }
   const totalWidth = units.reduce((sum, unit) => sum + unit.width, 0)
-  const slots = totalWidth + (mode.extraSlot ? 1 : 0)
-  const { cols, rows: plannedRows } = mode.covered
-    ? exactGridDimensions(slots)
-    : gridDimensions(slots)
+  const slots = totalWidth
+  const { cols, rows: plannedRows } =
+    mode.covered || mode.extraSlot
+      ? exactGridDimensions(slots)
+      : gridDimensions(slots)
 
   // Row-major packing; a double unit that would straddle the row edge
   // wraps to the next row, leaving a hole.
@@ -465,6 +479,15 @@ function layoutContainer(
     const originX = container.x + placement.col * (cellWidth + CELL_GAP)
     const originY = container.y + placement.row * (cellHeight + CELL_GAP)
 
+    if (placement.unit.kind === 'placeholder') {
+      placeholders.push({
+        key: `${mode.placeholderKey}+rest`,
+        box: { x: originX, y: originY, width: cellWidth, height: cellHeight },
+        depth,
+      })
+      continue
+    }
+
     if (placement.unit.kind === 'single') {
       const outer: Box = {
         x: originX,
@@ -472,7 +495,15 @@ function layoutContainer(
         width: cellWidth,
         height: cellHeight,
       }
-      layoutClass(placement.unit.cls, outer, depth, rects, dag, warnings)
+      layoutClass(
+        placement.unit.cls,
+        outer,
+        depth,
+        rects,
+        placeholders,
+        dag,
+        warnings,
+      )
       continue
     }
 
@@ -514,7 +545,15 @@ function layoutContainer(
           width: band.width,
           height: bandCellHeight,
         }
-        layoutClass(child, childOuter, depth + 1, rects, dag, warnings)
+        layoutClass(
+          child,
+          childOuter,
+          depth + 1,
+          rects,
+          placeholders,
+          dag,
+          warnings,
+        )
       })
     }
 
@@ -534,8 +573,24 @@ function layoutContainer(
         rightRect.contentBox.x + rightRect.contentBox.width - rightExclusiveX,
       ),
     }
-    layoutOwnChildren(pair.left, leftExclusive, depth, rects, dag, warnings)
-    layoutOwnChildren(pair.right, rightExclusive, depth, rects, dag, warnings)
+    layoutOwnChildren(
+      pair.left,
+      leftExclusive,
+      depth,
+      rects,
+      placeholders,
+      dag,
+      warnings,
+    )
+    layoutOwnChildren(
+      pair.right,
+      rightExclusive,
+      depth,
+      rects,
+      placeholders,
+      dag,
+      warnings,
+    )
   }
 }
 
@@ -545,11 +600,20 @@ function layoutClass(
   outer: Box,
   depth: number,
   rects: Array<EntityRect>,
+  placeholders: Array<PlaceholderRect>,
   dag: Dag,
   warnings: Array<string>,
 ): void {
   const rect = pushRect(cls, outer, depth, rects)
-  layoutOwnChildren(cls, rect.contentBox, depth, rects, dag, warnings)
+  layoutOwnChildren(
+    cls,
+    rect.contentBox,
+    depth,
+    rects,
+    placeholders,
+    dag,
+    warnings,
+  )
 }
 
 function layoutOwnChildren(
@@ -557,6 +621,7 @@ function layoutOwnChildren(
   box: Box,
   depth: number,
   rects: Array<EntityRect>,
+  placeholders: Array<PlaceholderRect>,
   dag: Dag,
   warnings: Array<string>,
 ): void {
@@ -566,9 +631,17 @@ function layoutOwnChildren(
   layoutContainer(
     children,
     box,
-    { covered, extraSlot: !covered },
+    {
+      covered,
+      extraSlot: !covered,
+      placeholderKey: cls.members
+        .map((member) => member.id)
+        .sort()
+        .join('+'),
+    },
     depth + 1,
     rects,
+    placeholders,
     dag,
     warnings,
   )

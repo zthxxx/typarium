@@ -52,6 +52,18 @@ export interface RectLayoutInput {
   viewport: Viewport
 }
 
+/**
+ * The explicit "everything else" block: a non-covered container's
+ * remaining value space, drawn as a light-gray `???` cell (half-weight
+ * border) instead of silent empty space.
+ */
+export interface PlaceholderRect {
+  /** Stable key derived from the container's class key. */
+  key: string
+  box: Box
+  depth: number
+}
+
 export interface RectLayoutResult {
   /** Draw order: parents strictly before children. */
   rects: Array<EntityRect>
@@ -59,5 +71,7 @@ export interface RectLayoutResult {
   universeIds: Array<EntityId>
   /** Displayed `never` entities — background dot emphasis + legend. */
   emptyIds: Array<EntityId>
+  /** `???` blocks, one per non-covered entity container. */
+  placeholders: Array<PlaceholderRect>
   warnings: Array<string>
 }

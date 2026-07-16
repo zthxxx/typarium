@@ -198,7 +198,7 @@ describe('computeRectLayout', () => {
     expect(b.outer.height).toBeCloseTo(a.contentBox.height)
   })
 
-  test('non-covered A ⊃ {B, C} keeps the extra slot (2x2 grid)', () => {
+  test('non-covered A ⊃ {B, C} shows an explicit ??? block (3x1 grid)', () => {
     const layout = layoutOf(
       [entity('A'), entity('B'), entity('C')],
       [
@@ -212,8 +212,14 @@ describe('computeRectLayout', () => {
     const c = rectOf(layout.rects, 'C')
     expect(boxContains(a.contentBox, b.outer)).toBe(true)
     expect(boxContains(a.contentBox, c.outer)).toBe(true)
-    expect(b.outer.width).toBeCloseTo((a.contentBox.width - CELL_GAP) / 2)
-    expect(b.outer.height).toBeCloseTo((a.contentBox.height - CELL_GAP) / 2)
+    // Children plus the ??? block split the container exactly: 3 x 1.
+    expect(b.outer.width).toBeCloseTo((a.contentBox.width - CELL_GAP * 2) / 3)
+    expect(b.outer.height).toBeCloseTo(a.contentBox.height)
+    const placeholder = layout.placeholders.find((candidate) =>
+      boxContains(a.contentBox, candidate.box),
+    )
+    expect(placeholder).toBeDefined()
+    expect(placeholder!.box.width).toBeCloseTo(b.outer.width)
     expect(boxesOverlap(b.outer, c.outer)).toBe(false)
   })
 
