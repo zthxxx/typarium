@@ -153,15 +153,24 @@ export const MonacoEditor = observer(function MonacoEditor() {
     // The editor instance is created once; content sync happens below.
   }, [])
 
-  // Programmatic code replacement (boot restore, presets, share links):
-  // push service state into the model without echoing back as user input.
+  // Programmatic code replacement (boot restore, presets, share links,
+  // format): push service state into the model without echoing back as
+  // user input. Applied as a full-range EDIT, not setValue — setValue
+  // wipes monaco's undo history, which made formatting un-undoable;
+  // the edit stack keeps Ctrl+Z working across replacements.
   useEffect(() => {
     const editor = editorRef.current
     const model = editor?.getModel()
     if (!editor || !model) return
     if (model.getValue() === editorService.code) return
     suppressChangeRef.current = true
-    model.setValue(editorService.code)
+    model.pushStackElement()
+    model.pushEditOperations(
+      [],
+      [{ range: model.getFullModelRange(), text: editorService.code }],
+      () => null,
+    )
+    model.pushStackElement()
     suppressChangeRef.current = false
   }, [editorService.code])
 
