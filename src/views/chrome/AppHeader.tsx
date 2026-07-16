@@ -1,4 +1,5 @@
 import { observer } from 'mobx-react-lite'
+import { LanguageIcon } from '@heroicons/react/20/solid'
 import { useEffect, useRef, useState } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
 import { useService } from '#/views/di.tsx'
@@ -50,7 +51,7 @@ export const AppHeader = observer(function AppHeader({
             className="flex items-center gap-1 rounded-full border-2 border-(--color-ink) bg-white px-2.5 py-1 font-mono text-xs font-bold shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
             onClick={() => setLocaleOpen((open) => !open)}
           >
-            <LocaleGlyph />
+            <LanguageIcon className="h-4 w-4" aria-hidden="true" />
             <span aria-hidden="true" className="text-[9px]">
               {localeOpen ? '▲' : '▼'}
             </span>
@@ -97,40 +98,6 @@ export const AppHeader = observer(function AppHeader({
     </header>
   )
 })
-
-/** The conventional i18n glyph: 文 over A with a translation slash. */
-function LocaleGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <text
-        x="4.5"
-        y="7.5"
-        textAnchor="middle"
-        fontSize="8.5"
-        fontWeight="700"
-        fill="var(--color-ink)"
-      >
-        文
-      </text>
-      <text
-        x="11"
-        y="14"
-        textAnchor="middle"
-        fontSize="9"
-        fontWeight="700"
-        fill="var(--color-ink)"
-      >
-        A
-      </text>
-      <path
-        d="M2.5 13.5 L8.5 2.5"
-        stroke="var(--color-ink-soft)"
-        strokeWidth="1"
-        opacity="0.5"
-      />
-    </svg>
-  )
-}
 
 /** Euler-mark: one set containing another — the product in one glyph. */
 function LogoMark() {

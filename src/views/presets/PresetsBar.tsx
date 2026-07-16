@@ -36,7 +36,7 @@ export const PresetsBar = observer(function PresetsBar() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-1">
-      <span className="mr-1 font-mono text-[11px] font-bold text-(--color-ink-soft)">
+      <span className="mr-1 font-mono text-xs font-bold text-(--color-ink-soft)">
         {settings.t('presets.title')}
       </span>
       {virtual.map((preset) => (
@@ -51,7 +51,7 @@ export const PresetsBar = observer(function PresetsBar() {
         <button
           type="button"
           aria-expanded={snippetsOpen}
-          className="rounded-full border-2 border-dashed border-(--color-ink-soft) bg-white/70 px-3 py-1 font-mono text-xs font-bold text-(--color-ink-soft) transition-[transform,color,border-color] hover:border-(--color-brand) hover:text-(--color-brand) active:scale-[0.95]"
+          className="rounded-none border-2 border-dashed border-(--color-ink-soft) bg-white/70 px-3 py-1 font-mono text-xs font-bold text-(--color-ink-soft) transition-[transform,color,border-color] hover:border-(--color-brand) hover:text-(--color-brand) active:scale-[0.95]"
           onClick={() => setSnippetsOpen((open) => !open)}
         >
           {settings.t('presets.snippets')} {snippetsOpen ? '▴' : '▾'}

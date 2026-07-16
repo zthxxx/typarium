@@ -84,7 +84,7 @@ export const EditorDrawer = observer(function EditorDrawer() {
       </div>
       <div className="flex min-h-0 w-full flex-col border-l-2 border-(--color-line) bg-(--color-board)">
         <div className="flex h-8 shrink-0 items-center justify-between border-b-2 border-(--color-line) bg-white px-3">
-          <span className="font-mono text-[11px] font-bold text-(--color-ink-soft)">
+          <span className="font-mono text-xs font-bold text-(--color-ink-soft)">
             {settings.t('editor.title')}
           </span>
           <button
