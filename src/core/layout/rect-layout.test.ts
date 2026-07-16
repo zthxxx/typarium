@@ -17,6 +17,7 @@ function entity(id: string, special: SpecialRole = 'none'): TypeEntity {
     id,
     name: id,
     typeText: id,
+    expandedText: id,
     special,
     origin: 'code',
     declarationSpan: null,

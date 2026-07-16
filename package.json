@@ -47,6 +47,7 @@
     "@tanstack/react-router-ssr-query": "^1.167.1",
     "@tanstack/react-start": "^1.168.28",
     "@tanstack/router-plugin": "^1.132.0",
+    "@typescript/vfs": "^1.6.4",
     "comlink": "^4.4.2",
     "idb": "^8.0.3",
     "lucide-react": "^0.545.0",
@@ -57,8 +58,7 @@
     "power-di": "^2.4.57",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.18",
-    "tsgo-wasm": "^7.0.2"
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
@@ -80,7 +80,7 @@
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.1",
     "simple-git-hooks": "^2.13.1",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "vite": "^8.0.0",
     "vitest": "^4.1.5"
   },

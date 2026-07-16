@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'vitest'
-import { createTsgoAnalyzer } from '#/adapters/typescript/analyzer/create-tsgo-analyzer.ts'
-import { createNodeTsgoRunner } from '#/adapters/typescript/analyzer/tsgo-runner.node.ts'
+import { createTsAnalyzer } from '#/adapters/typescript/analyzer/create-ts-analyzer.ts'
+import { loadLibFilesFromNodeModules } from '#/adapters/typescript/analyzer/lib-files.node.ts'
 import type { AnalysisResult, RelationKind } from '#/core/set-model/types.ts'
 
 /**
- * Teaching acceptance matrix against the REAL tsgo (TypeScript 7)
- * compiler via the CLI runner. Each analyze() is a full tsc pass
- * (~1s), so cases group several assertions per run.
+ * Teaching acceptance matrix against the real TypeScript 6.0.3 checker
+ * (the single engine, ADR-0015). One shared analyzer instance: the
+ * language service is incremental by design and reuse mirrors runtime.
  */
 
-const analyzer = createTsgoAnalyzer(createNodeTsgoRunner())
+const analyzer = createTsAnalyzer({ libFiles: loadLibFilesFromNodeModules() })
 
 function relationOf(
   result: AnalysisResult,
@@ -28,9 +28,9 @@ function relationOf(
   return found.kind
 }
 
-describe('tsgo analyzer', () => {
-  test('covariance keeps direction, function parameters invert it', async () => {
-    const result = await analyzer.analyze(
+describe('ts analyzer', () => {
+  test('covariance keeps direction, function parameters invert it', () => {
+    const result = analyzer.analyze(
       [
         'export type Co<T = never> = T | boolean',
         'export type CoNarrow = Co<string>',
@@ -47,8 +47,8 @@ describe('tsgo analyzer', () => {
     expect(relationOf(result, 'StrHandler', 'CoNarrow')).toBe('unrelated')
   })
 
-  test('method bivariance merges, property syntax nests', async () => {
-    const result = await analyzer.analyze(
+  test('method bivariance merges, property syntax nests', () => {
+    const result = analyzer.analyze(
       [
         'interface Animal { name: string }',
         'interface Dog extends Animal { breed: string }',
@@ -63,8 +63,8 @@ describe('tsgo analyzer', () => {
     expect(relationOf(result, 'KennelF', 'DogKennelF')).toBe('subset')
   })
 
-  test('tagged union: branches unrelated, each subset of the sum', async () => {
-    const result = await analyzer.analyze(
+  test('tagged union: branches unrelated, each subset of the sum', () => {
+    const result = analyzer.analyze(
       [
         "export type GroupRow = { type: 'Group'; groupName: string }",
         "export type DataRow = { type: 'DataRow'; data: string }",
@@ -80,8 +80,8 @@ describe('tsgo analyzer', () => {
     expect(relationOf(result, 'CreatorRow', 'RowData')).toBe('subset')
   })
 
-  test('literals nest into virtual preset primitives', async () => {
-    const result = await analyzer.analyze(`export type Foo = 'foo'`, [
+  test('literals nest into virtual preset primitives', () => {
+    const result = analyzer.analyze(`export type Foo = 'foo'`, [
       { name: 'string', typeText: 'string' },
       { name: 'Array<T>', typeText: 'Array<unknown>' },
       { name: 'object', typeText: 'object' },
@@ -93,8 +93,8 @@ describe('tsgo analyzer', () => {
     )
   })
 
-  test('specials: unknown universe, never empty, any badge-only', async () => {
-    const result = await analyzer.analyze(
+  test('specials: unknown universe, never empty, any badge-only', () => {
+    const result = analyzer.analyze(
       [
         'export type U = unknown',
         'export type N = never',
@@ -120,8 +120,18 @@ describe('tsgo analyzer', () => {
     expect(inRelations.has('N')).toBe(false)
   })
 
-  test('scan rules: non-export and defaultless generics skipped', async () => {
-    const result = await analyzer.analyze(
+  test('lazy discriminant reduction still classifies as empty', () => {
+    // TypeFlags.Never misses this (deferred reduction); the assignable-
+    // to-never query is the reliable emptiness oracle (v1 finding).
+    const result = analyzer.analyze(
+      ["export type Conflict = { kind: 'a' } & { kind: 'b' }"].join('\n'),
+      [],
+    )
+    expect(result.entities[0]?.special).toBe('empty')
+  })
+
+  test('scan rules: non-export and defaultless generics skipped', () => {
+    const result = analyzer.analyze(
       [
         'type Hidden = string',
         'export type Generic<T> = T | boolean',
@@ -132,11 +142,29 @@ describe('tsgo analyzer', () => {
     )
     const ids = result.entities.map((entity) => entity.id)
     expect(ids).toEqual(['WithDefault', 'Shown'])
+    // The all-default generic instantiates bare: string | boolean.
     expect(relationOf(result, 'Shown', 'WithDefault')).toBe('unrelated')
+    expect(
+      result.entities.find((entity) => entity.id === 'WithDefault')
+        ?.expandedText,
+    ).toBe('string | boolean')
   })
 
-  test('broken user code returns diagnostics and no entities', async () => {
-    const result = await analyzer.analyze('export type X = unknwon', [])
+  test('expandedText resolves aliases one level', () => {
+    const result = analyzer.analyze(
+      [
+        'export type Co<T = never> = T | boolean',
+        'export type R = Co<string>',
+      ].join('\n'),
+      [],
+    )
+    const entity = result.entities.find((candidate) => candidate.id === 'R')
+    expect(entity?.expandedText).toBe('string | boolean')
+    expect(entity?.typeText).toBe('Co<string>')
+  })
+
+  test('broken user code returns diagnostics and no entities', () => {
+    const result = analyzer.analyze('export type X = unknwon', [])
     expect(result.entities).toEqual([])
     expect(result.relations).toEqual([])
     expect(
@@ -144,14 +172,53 @@ describe('tsgo analyzer', () => {
     ).toBe(true)
   })
 
-  test('deterministic: identical input yields identical result', async () => {
+  test('check returns spanned errors without relations work', () => {
+    const source = 'export type X = unknwon\nexport type Y = string'
+    const diagnostics = analyzer.check(source)
+    const error = diagnostics.find(
+      (diagnostic) => diagnostic.severity === 'error',
+    )
+    expect(error).toBeDefined()
+    expect(error!.span.start).toBe(source.indexOf('unknwon'))
+    expect(error!.span.end).toBe(source.indexOf('unknwon') + 'unknwon'.length)
+    expect(analyzer.check('export type Y = string')).toEqual([])
+  })
+
+  test('quickInfo answers at a declaration name', () => {
+    const source =
+      'export type Co<T = never> = T | boolean\nexport type R = Co<string>'
+    const info = analyzer.quickInfo(source, source.indexOf('R ='))
+    expect(info).toContain('type R')
+    expect(info).toContain('string | boolean')
+    expect(analyzer.quickInfo(source, 0)).toBeNull()
+  })
+
+  test('completions offer lib types at a type position', () => {
+    const source = 'export type S = str'
+    const entries = analyzer.completions(source, source.length)
+    expect(entries.length).toBeGreaterThan(0)
+    expect(entries.map((entry) => entry.name)).toContain('string')
+  })
+
+  test('deterministic: identical input yields identical result', () => {
     const source = 'export type A = string\nexport type B = string | number'
     const virtual = [{ name: 'number', typeText: 'number' }]
-    const first = await analyzer.analyze(source, virtual)
-    const second = await analyzer.analyze(source, virtual)
+    const first = analyzer.analyze(source, virtual)
+    const second = analyzer.analyze(source, virtual)
     expect(second).toEqual(first)
     expect(relationOf(first, 'A', 'B')).toBe('subset')
     expect(relationOf(first, 'preset:number', 'B')).toBe('subset')
     expect(relationOf(first, 'A', 'preset:number')).toBe('unrelated')
+  })
+
+  test('broken virtual preset drops only that entity', () => {
+    const result = analyzer.analyze('export type A = string', [
+      { name: 'good', typeText: 'number' },
+      { name: 'bad', typeText: 'NoSuchGlobalType' },
+    ])
+    const ids = result.entities.map((entity) => entity.id)
+    expect(ids).toContain('preset:good')
+    expect(ids).not.toContain('preset:bad')
+    expect(relationOf(result, 'A', 'preset:good')).toBe('unrelated')
   })
 })

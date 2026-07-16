@@ -49,6 +49,12 @@ export interface TypeEntity {
   name: string
   /** Type text as written in source / preset, e.g. `string | number`. */
   typeText: string
+  /**
+   * One-level alias-expanded text from the checker (e.g. `Co<string>`
+   * expands to `string | boolean`); equals `typeText` when nothing
+   * expands. Tooltips prefer this — it is the teaching payload.
+   */
+  expandedText: string
   special: SpecialRole
   origin: EntityOrigin
   /** Span of the declaration in the source; null for preset entities. */

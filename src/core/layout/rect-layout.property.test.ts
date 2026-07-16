@@ -22,6 +22,7 @@ const forestArbitrary = fc
       id,
       name: id,
       typeText: id,
+      expandedText: id,
       special: 'none',
       origin: 'code',
       declarationSpan: null,

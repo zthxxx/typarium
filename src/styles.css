@@ -78,18 +78,17 @@ body {
 }
 
 /*
- * The ∅ dot background (ADR-0005 v2): appears when `never` is displayed.
- * The empty set is rendered as texture, not area — it exists inside
- * every region, so it is the backdrop everything else sits on.
+ * The ∅ background (ADR-0005 v2): appears when `never` is displayed.
+ * Each "dot" is the ∅ glyph itself, tiled as an SVG data-URI in a
+ * 2x2 checkerboard of two shades — the Photoshop transparency-grid
+ * metaphor: the empty set is the texture everything else sits on.
+ * A background-image tile rasterizes once and is GPU-tiled: far
+ * cheaper than per-glyph DOM or canvas SDF rendering.
  */
 .canvas-dots {
   background-color: var(--color-board);
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--color-ink) 22%, transparent) 1.5px,
-    transparent 1.5px
-  );
-  background-size: 18px 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ctext x='12' y='16' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.16)'%3E%E2%88%85%3C/text%3E%3Ctext x='36' y='16' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.055)'%3E%E2%88%85%3C/text%3E%3Ctext x='12' y='40' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.055)'%3E%E2%88%85%3C/text%3E%3Ctext x='36' y='40' text-anchor='middle' font-family='monospace' font-size='11' fill='rgba(27,39,51,0.16)'%3E%E2%88%85%3C/text%3E%3C/svg%3E");
+  background-size: 48px 48px;
 }
 
 /* Focus visibility: game-feel thick focus ring in brand color */

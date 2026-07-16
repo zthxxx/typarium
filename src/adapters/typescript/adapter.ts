@@ -5,11 +5,12 @@ import type { AnalysisWorkerApi } from '#/adapters/typescript/analysis.worker.ts
 import type { LanguageAdapter } from '#/core/analysis/adapter.ts'
 
 /**
- * The semantic oracle is the TypeScript 7 native compiler, run as the
- * tsgo-wasm build inside the analysis worker (ADR-0013). Export
- * scanning still uses the 5.9 parser for syntax only.
+ * Kept in sync with the exact `typescript` pin in package.json — the
+ * single implementation powering analysis, diagnostics, hover and
+ * completions (ADR-0015). 6.0.3 is the last line with a JS compiler
+ * API, required for checker-level containment queries.
  */
-const ENGINE_LABEL = 'TypeScript 7 (tsgo-wasm)'
+const ENGINE_LABEL = 'TypeScript 6.0.3'
 
 const SAMPLE_SOURCE = `// typarium — every exported type is drawn as a set of values
 
@@ -46,6 +47,9 @@ export function createTypescriptAdapter(): LanguageAdapter {
     engineLabel: ENGINE_LABEL,
 
     analyze: (source, virtualTypes) => remote.analyze(source, virtualTypes),
+    check: (source) => remote.check(source),
+    quickInfo: (source, offset) => remote.quickInfo(source, offset),
+    completions: (source, offset) => remote.completions(source, offset),
     dispose: () => worker.terminate(),
   }
 }

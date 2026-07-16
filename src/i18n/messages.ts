@@ -19,7 +19,7 @@ const en = {
   'canvas.emptyHint': 'Pick a type below or export one in the editor',
   'anyBadge.label': 'any',
   'anyBadge.tooltip':
-    'any is outside set theory: it is treated as assignable both ways, breaking subset reasoning. Resolved to any: {names}',
+    'any is outside set theory: it is treated as assignable both ways, breaking subset reasoning',
   'editor.title': 'Editor',
   'editor.collapse': 'Collapse editor',
   'editor.expand': 'Open editor',
@@ -42,8 +42,7 @@ const zh: Record<MessageKey, string> = {
   'canvas.neverRow': '∅ never',
   'canvas.emptyHint': '点下方类型，或在编辑器里 export 一个类型',
   'anyBadge.label': 'any',
-  'anyBadge.tooltip':
-    'any 不属于集合范畴：它被视为双向可赋值，破坏子集推理。解析为 any 的有：{names}',
+  'anyBadge.tooltip': 'any 不属于集合范畴：它被视为双向可赋值，破坏子集推理',
   'editor.title': '编辑器',
   'editor.collapse': '收起编辑器',
   'editor.expand': '打开编辑器',

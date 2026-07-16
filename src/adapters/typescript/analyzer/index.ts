@@ -1,9 +1,9 @@
+export { createTsAnalyzer } from '#/adapters/typescript/analyzer/create-ts-analyzer.ts'
+export type {
+  TsAnalyzer,
+  TsAnalyzerOptions,
+} from '#/adapters/typescript/analyzer/create-ts-analyzer.ts'
 export {
-  createTsgoAnalyzer,
-  type TscRunner,
-  type TsgoAnalyzer,
-} from '#/adapters/typescript/analyzer/create-tsgo-analyzer.ts'
-export {
-  scanExports,
   MAX_ENTITIES,
+  scanExports,
 } from '#/adapters/typescript/analyzer/scan-exports.ts'

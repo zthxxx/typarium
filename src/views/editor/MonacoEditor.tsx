@@ -1,31 +1,38 @@
 import { useEffect, useRef } from 'react'
+import { autorun } from 'mobx'
 import { observer } from 'mobx-react-lite'
+import { AnalysisService } from '#/services/analysis.service.ts'
 import { EditorService } from '#/services/editor.service.ts'
-import { VisualizationStore } from '#/services/visualization.store.ts'
 import { SettingsService } from '#/services/settings.service.ts'
+import { VisualizationStore } from '#/services/visualization.store.ts'
 import { useService } from '#/views/di.tsx'
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js'
 
 /**
  * Monaco integration, client-only (mounted under <ClientOnly>).
- * Monaco's own TypeScript worker provides diagnostics squiggles, hover
- * and completion inside the editor; the set-semantics analysis runs in
- * the separate adapter worker (ADR-0007). Both are pinned to the same
- * TypeScript version via the monaco-editor package.
+ *
+ * ADR-0015: monaco's embedded TypeScript worker is NOT loaded — the
+ * single typescript@6.0.3 analysis worker provides diagnostics
+ * (markers), hover and completions through providers registered here.
+ * Monaco contributes only the editor surface and syntax highlighting.
  */
 export const MonacoEditor = observer(function MonacoEditor() {
   const editorService = useService(EditorService)
+  const analysis = useService(AnalysisService)
   const settings = useService(SettingsService)
   const viz = useService(VisualizationStore)
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
+  const monacoRef = useRef<typeof Monaco | null>(null)
   const suppressChangeRef = useRef(false)
 
   useEffect(() => {
     let disposed = false
+    const disposables: Array<{ dispose: () => void }> = []
 
     void setupMonaco().then((monaco) => {
       if (disposed || !hostRef.current) return
+      monacoRef.current = monaco
 
       const model = monaco.editor.createModel(
         editorService.code,
@@ -52,16 +59,58 @@ export const MonacoEditor = observer(function MonacoEditor() {
       })
 
       // Bidirectional highlight: caret inside an exported declaration
-      // lights up its contour on the canvas.
+      // lights up its rectangle on the canvas.
       editor.onDidChangeCursorPosition((event) => {
         viz.setCursorOffset(model.getOffsetAt(event.position))
       })
+
+      // Language features backed by the single analysis worker.
+      disposables.push(
+        monaco.languages.registerHoverProvider('typescript', {
+          provideHover: async (hoverModel, position) => {
+            const info = await analysis.quickInfo(
+              hoverModel.getValue(),
+              hoverModel.getOffsetAt(position),
+            )
+            if (!info) return null
+            return {
+              contents: [{ value: '```typescript\n' + info + '\n```' }],
+            }
+          },
+        }),
+        monaco.languages.registerCompletionItemProvider('typescript', {
+          triggerCharacters: ['.', '"', "'", '<'],
+          provideCompletionItems: async (completionModel, position) => {
+            const entries = await analysis.completions(
+              completionModel.getValue(),
+              completionModel.getOffsetAt(position),
+            )
+            const word = completionModel.getWordUntilPosition(position)
+            const range = {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: word.startColumn,
+              endColumn: word.endColumn,
+            }
+            return {
+              suggestions: entries.map((entry) => ({
+                label: entry.name,
+                kind: completionKind(monaco, entry.kind),
+                insertText: entry.name,
+                sortText: entry.sortText,
+                range,
+              })),
+            }
+          },
+        }),
+      )
 
       editorRef.current = editor
     })
 
     return () => {
       disposed = true
+      for (const disposable of disposables) disposable.dispose()
       editorRef.current?.getModel()?.dispose()
       editorRef.current?.dispose()
       editorRef.current = null
@@ -81,6 +130,35 @@ export const MonacoEditor = observer(function MonacoEditor() {
     suppressChangeRef.current = false
   }, [editorService.code])
 
+  // Diagnostics markers: the fast check pass streams into monaco.
+  useEffect(() => {
+    return autorun(() => {
+      const diagnostics = editorService.editorDiagnostics
+      const monaco = monacoRef.current
+      const model = editorRef.current?.getModel()
+      if (!monaco || !model) return
+      monaco.editor.setModelMarkers(
+        model,
+        'typarium',
+        diagnostics.map((diagnostic) => {
+          const start = model.getPositionAt(diagnostic.span.start)
+          const end = model.getPositionAt(diagnostic.span.end)
+          return {
+            severity:
+              diagnostic.severity === 'error'
+                ? monaco.MarkerSeverity.Error
+                : monaco.MarkerSeverity.Warning,
+            message: diagnostic.message,
+            startLineNumber: start.lineNumber,
+            startColumn: start.column,
+            endLineNumber: end.lineNumber,
+            endColumn: end.column,
+          }
+        }),
+      )
+    })
+  }, [editorService])
+
   return (
     <div
       ref={hostRef}
@@ -91,61 +169,54 @@ export const MonacoEditor = observer(function MonacoEditor() {
   )
 })
 
+function completionKind(
+  monaco: typeof Monaco,
+  kind: string,
+): Monaco.languages.CompletionItemKind {
+  const kinds = monaco.languages.CompletionItemKind
+  switch (kind) {
+    case 'keyword':
+      return kinds.Keyword
+    case 'type':
+    case 'interface':
+    case 'alias':
+      return kinds.Interface
+    case 'const':
+    case 'var':
+    case 'let':
+      return kinds.Variable
+    case 'function':
+    case 'method':
+      return kinds.Function
+    case 'enum':
+      return kinds.Enum
+    default:
+      return kinds.Text
+  }
+}
+
 let monacoSetup: Promise<MonacoApi> | null = null
 
 type MonacoApi = typeof Monaco
 
 /**
- * One-time monaco boot: worker wiring (Vite `?worker` imports), strict
- * compiler options (product rule: strict check always on), and the
- * typarium editor theme.
+ * One-time monaco boot: editor core + TypeScript SYNTAX only (monarch
+ * tokenizer from basic-languages). The TS language worker is never
+ * loaded — semantic features come from the analysis worker (ADR-0015).
  */
 function setupMonaco(): Promise<MonacoApi> {
   monacoSetup ??= (async () => {
-    // Slim monaco assembly: full-featured editor core (edcore) plus the
-    // TypeScript language only — the root `monaco-editor` entry drags in
-    // every language contribution (~15MB of lazy chunks in the artifact).
-    const [
-      monaco,
-      tsContribution,
-      ,
-      { default: EditorWorker },
-      { default: TsWorker },
-    ] = await Promise.all([
+    const [monaco, , { default: EditorWorker }] = await Promise.all([
       import('monaco-editor/esm/vs/editor/edcore.main.js'),
-      import('monaco-editor/esm/vs/language/typescript/monaco.contribution.js'),
       import('monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution.js'),
       import('monaco-editor/esm/vs/editor/editor.worker.js?worker'),
-      import('monaco-editor/esm/vs/language/typescript/ts.worker.js?worker'),
     ])
 
     self.MonacoEnvironment = {
-      getWorker(_workerId: string, label: string) {
-        if (label === 'typescript' || label === 'javascript') {
-          return new TsWorker()
-        }
+      getWorker() {
         return new EditorWorker()
       },
     }
-
-    // monaco 0.55 types the `languages.typescript` namespace as a
-    // deprecated stub; with the slim edcore assembly we consume the
-    // contribution module's exports directly through a narrow cast.
-    interface TsLanguageApi {
-      typescriptDefaults: {
-        setCompilerOptions: (options: Record<string, unknown>) => void
-      }
-      ScriptTarget: Record<string, number>
-      ModuleResolutionKind: Record<string, number>
-    }
-    const tsLanguage = tsContribution as unknown as TsLanguageApi
-
-    tsLanguage.typescriptDefaults.setCompilerOptions({
-      strict: true,
-      target: tsLanguage.ScriptTarget.ES2020,
-      moduleResolution: tsLanguage.ModuleResolutionKind.NodeJs,
-      noEmit: true,
-    })
 
     monaco.editor.defineTheme('typarium-light', {
       base: 'vs',

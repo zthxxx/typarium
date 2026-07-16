@@ -50,6 +50,18 @@ export class VisualizationStore {
     return this.analysis.lastGoodResult?.anyEntityNames ?? []
   }
 
+  /** Entities resolved to `any`, for the badge's list tooltip. */
+  get anyEntities(): Array<TypeEntity> {
+    return this.entities.filter(
+      (entity) => entity.special === 'outside-set-theory',
+    )
+  }
+
+  /** Entities resolved to `never` (the empty set), outermost data. */
+  get neverEntities(): Array<TypeEntity> {
+    return this.entities.filter((entity) => entity.special === 'empty')
+  }
+
   get layout(): RectLayoutResult | null {
     const result = this.analysis.lastGoodResult
     if (!result) return null
@@ -108,7 +120,7 @@ export class VisualizationStore {
         if (entity) {
           items.push({
             name: entity.name,
-            typeText: entity.typeText,
+            typeText: entity.expandedText,
             colorIndex: null,
           })
         }
@@ -122,7 +134,7 @@ export class VisualizationStore {
           if (entity) {
             items.push({
               name: entity.name,
-              typeText: entity.typeText,
+              typeText: entity.expandedText,
               colorIndex: rect.colorIndex,
             })
           }
@@ -130,7 +142,9 @@ export class VisualizationStore {
       }
     }
 
-    return { items, onNever: true }
+    // The ∅ row appears only while never is actually displayed — either
+    // toggled as a preset or some export resolved to the empty set.
+    return { items, onNever: this.neverDisplayed }
   }
 
   /** Whether a point falls inside some rectangle body (vs background). */

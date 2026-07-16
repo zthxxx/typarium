@@ -17,6 +17,7 @@ interface TypariumProbe {
       relations: Array<{ a: string; b: string; kind: string }>
       anyEntityNames: Array<string>
     } | null
+    quickInfo: (source: string, offset: number) => Promise<string | null>
   }
 }
 
@@ -256,9 +257,20 @@ test('teaching: method bivariance merges, property syntax nests', async ({
   expect(relationOf(list, 'KennelF', 'DogKennelF')).toBe('subset')
 })
 
-test('never preset shows the dot background and legend', async ({ page }) => {
+test('never preset shows the ∅ background and legend', async ({ page }) => {
   await page.getByRole('button', { name: 'never', exact: true }).click()
   await expect(page.getByText(/∅ never/).first()).toBeVisible({
     timeout: 20_000,
   })
+})
+
+test('editor hover quick info comes from the single worker', async ({
+  page,
+}) => {
+  await loadCode(page, 'export type Foo = "foo" | "bar"')
+  const info = await page.evaluate(async () => {
+    const t = window.__typarium!
+    return t.analysis.quickInfo(t.editor.code, 'export type F'.length)
+  })
+  expect(info).toContain('Foo')
 })

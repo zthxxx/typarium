@@ -1,10 +1,13 @@
-import { makeAutoObservable } from 'mobx'
+import { makeAutoObservable, runInAction } from 'mobx'
 import type { VirtualType } from '#/core/analysis/adapter.ts'
+import type { SourceDiagnostic } from '#/core/set-model/types.ts'
 import type { AnalysisService } from '#/services/analysis.service.ts'
 import type { PersistenceService } from '#/services/persistence.service.ts'
 
 /** Product rule: auto-submit visualization 1.2s after the user stops typing. */
 const ANALYZE_DEBOUNCE_MS = 1_200
+/** Squiggles should feel editor-grade: check runs well before analysis. */
+const CHECK_DEBOUNCE_MS = 350
 /** Saves are cheaper than analysis; persist keystrokes almost immediately. */
 const SAVE_DEBOUNCE_MS = 300
 
@@ -15,8 +18,12 @@ const SAVE_DEBOUNCE_MS = 300
  */
 export class EditorService {
   code = ''
+  /** Live editor diagnostics (fast check pass), consumed by monaco markers. */
+  editorDiagnostics: Array<SourceDiagnostic> = []
 
   private analyzeTimer: ReturnType<typeof setTimeout> | null = null
+  private checkTimer: ReturnType<typeof setTimeout> | null = null
+  private checkTicket = 0
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private virtualTypesGetter: () => Array<VirtualType> = () => []
   private activePresetsGetter: () => Array<string> = () => []
@@ -30,6 +37,8 @@ export class EditorService {
       | 'analysis'
       | 'persistence'
       | 'analyzeTimer'
+      | 'checkTimer'
+      | 'checkTicket'
       | 'saveTimer'
       | 'virtualTypesGetter'
       | 'activePresetsGetter'
@@ -37,6 +46,8 @@ export class EditorService {
       analysis: false,
       persistence: false,
       analyzeTimer: false,
+      checkTimer: false,
+      checkTicket: false,
       saveTimer: false,
       virtualTypesGetter: false,
       activePresetsGetter: false,
@@ -57,6 +68,7 @@ export class EditorService {
     if (code === this.code) return
     this.code = code
     this.scheduleSave()
+    this.scheduleCheck()
     this.scheduleAnalyze()
   }
 
@@ -71,6 +83,7 @@ export class EditorService {
   analyzeNow(): void {
     if (this.analyzeTimer) clearTimeout(this.analyzeTimer)
     this.scheduleSave()
+    this.scheduleCheck()
     void this.analysis.analyze(this.code, this.virtualTypesGetter())
   }
 
@@ -91,6 +104,20 @@ export class EditorService {
     const trimmed = this.code.replace(/\s+$/, '')
     const next = trimmed === '' ? `${line}\n` : `${trimmed}\n\n${line}\n`
     this.replaceCode(next)
+  }
+
+  private scheduleCheck(): void {
+    if (this.checkTimer) clearTimeout(this.checkTimer)
+    this.checkTimer = setTimeout(() => {
+      const ticket = ++this.checkTicket
+      const source = this.code
+      void this.analysis.check(source).then((diagnostics) => {
+        if (ticket !== this.checkTicket) return
+        runInAction(() => {
+          this.editorDiagnostics = diagnostics
+        })
+      })
+    }, CHECK_DEBOUNCE_MS)
   }
 
   private scheduleAnalyze(): void {

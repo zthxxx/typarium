@@ -87,11 +87,7 @@ export const RectCanvas = observer(function RectCanvas() {
         />
       ))}
 
-      {neverActive ? (
-        <span className="absolute bottom-3 left-4 z-10 rounded-full border-2 border-(--color-ink) bg-white px-3 py-1 font-mono text-[11px] font-semibold">
-          {settings.t('canvas.neverLegend')}
-        </span>
-      ) : null}
+      {neverActive ? <NeverLegend /> : null}
 
       {!hasRects && !universeActive && !neverActive ? (
         <p className="absolute inset-0 flex items-center justify-center text-base text-(--color-ink-soft)">
@@ -103,7 +99,14 @@ export const RectCanvas = observer(function RectCanvas() {
         <StackTooltip
           pointer={pointer}
           stack={stack}
-          neverRow={settings.t('canvas.neverRow')}
+          neverRow={[
+            settings.t('canvas.neverRow'),
+            // The preset's own entity is literally named `never` —
+            // only code exports add information here.
+            ...viz.neverEntities
+              .filter((entity) => entity.origin === 'code')
+              .map((entity) => entity.name),
+          ].join(' ≡ ')}
           hostWidth={viz.viewportWidth}
         />
       ) : null}
@@ -219,3 +222,61 @@ function StackTooltip({
     </div>
   )
 }
+
+/**
+ * The ∅ legend pill: quiet by default (thin dense-dashed neutral
+ * border), asserts itself on hover (solid dark border) and reveals
+ * which exports resolved to the empty set.
+ */
+const NeverLegend = observer(function NeverLegend() {
+  const viz = useService(VisualizationStore)
+  const settings = useService(SettingsService)
+  const [hovered, setHovered] = useState(false)
+  const resolved = viz.neverEntities
+
+  return (
+    <span
+      className="absolute bottom-3 left-4 z-10 rounded-full bg-white px-3 py-1 font-mono text-[11px] font-semibold transition-colors"
+      style={{
+        color: hovered ? 'var(--color-ink)' : 'var(--color-ink-soft)',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+      >
+        <rect
+          x="0.75"
+          y="0.75"
+          width="99%"
+          height="94%"
+          rx="12"
+          fill="none"
+          stroke={hovered ? 'var(--color-ink)' : 'rgba(100,106,115,0.55)'}
+          strokeWidth="1.5"
+          strokeDasharray={hovered ? undefined : '3 3'}
+        />
+      </svg>
+      {settings.t('canvas.neverLegend')}
+      {hovered && resolved.length > 0 ? (
+        <span className="absolute bottom-full left-0 mb-2 block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-normal shadow-[4px_4px_0_rgba(27,39,51,0.18)]">
+          <ul className="flex flex-col gap-1">
+            {resolved.map((entity) => (
+              <li key={entity.id} className="flex items-baseline gap-2">
+                <span className="text-(--color-ink-soft)">∅</span>
+                <span className="font-bold">{entity.name}</span>
+                {entity.typeText !== entity.name ? (
+                  <span className="max-w-44 truncate text-(--color-ink-soft)">
+                    {entity.typeText}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </span>
+      ) : null}
+    </span>
+  )
+})

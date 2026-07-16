@@ -32,6 +32,19 @@ export class AnalysisService {
     return this.adapter.id
   }
 
+  /** Editor language features, delegated to the single adapter worker. */
+  check(source: string): Promise<Array<SourceDiagnostic>> {
+    return this.adapter.check(source)
+  }
+
+  quickInfo(source: string, offset: number): Promise<string | null> {
+    return this.adapter.quickInfo(source, offset)
+  }
+
+  completions(source: string, offset: number) {
+    return this.adapter.completions(source, offset)
+  }
+
   async analyze(
     source: string,
     virtualTypes: Array<VirtualType>,

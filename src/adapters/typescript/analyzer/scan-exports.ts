@@ -2,10 +2,10 @@ import * as ts from 'typescript'
 import type { SourceDiagnostic, SourceSpan } from '#/core/set-model/types.ts'
 
 /**
- * Syntactic export scan. This is the ONLY use of the typescript (5.9)
- * package in the v2 engine: pure parsing, no checker — the semantic
- * oracle is tsgo (TypeScript 7) via diagnostics probes (ADR-0013).
- * Type-alias/interface/enum syntax is stable across both lines.
+ * Syntactic export scan: which top-level declarations become displayed
+ * entities, with their display text and source spans. Semantics (types,
+ * relations, specials) come from the checker in create-ts-analyzer —
+ * same typescript package, one toolchain (ADR-0015).
  */
 
 export interface ScannedExport {
@@ -17,7 +17,7 @@ export interface ScannedExport {
 
 /**
  * Hard cap on displayed entities: a containment canvas past this count
- * stops teaching anything, and the O(N²) probe matrix grows quadratic.
+ * stops teaching anything, and the O(N²) relation matrix grows quadratic.
  */
 export const MAX_ENTITIES = 24
 

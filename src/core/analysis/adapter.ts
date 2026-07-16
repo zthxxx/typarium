@@ -1,11 +1,16 @@
-import type { AnalysisResult } from '#/core/set-model/types.ts'
+import type {
+  AnalysisResult,
+  SourceDiagnostic,
+} from '#/core/set-model/types.ts'
 
 /**
  * Contract every language adapter fulfills. The app is written against
  * this interface only; the header language selector swaps adapters.
  *
- * Adapters run their analysis inside a Web Worker — `analyze` is async
- * for that reason. The worker wiring lives with the adapter, not in core.
+ * One adapter is the SINGLE language implementation in the bundle: it
+ * powers the canvas analysis AND the editor's language features
+ * (diagnostics, hover, completions) from the same worker — the editor
+ * never loads a second copy of the language toolchain (ADR-0015).
  */
 export interface LanguageAdapter {
   readonly id: string
@@ -29,7 +34,23 @@ export interface LanguageAdapter {
     source: string,
     virtualTypes: Array<VirtualType>,
   ) => Promise<AnalysisResult>
+  /** Fast diagnostics-only pass driving editor squiggles. */
+  check: (source: string) => Promise<Array<SourceDiagnostic>>
+  /** LSP-style hover text at a source offset; null when nothing there. */
+  quickInfo: (source: string, offset: number) => Promise<string | null>
+  /** Completion entries at a source offset for the editor. */
+  completions: (
+    source: string,
+    offset: number,
+  ) => Promise<Array<CompletionEntry>>
   dispose: () => void
+}
+
+/** Minimal completion surface the editor needs (kind maps to icons). */
+export interface CompletionEntry {
+  name: string
+  kind: string
+  sortText: string
 }
 
 /** A type displayed on the canvas without touching the editor code. */
