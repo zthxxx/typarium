@@ -83,7 +83,7 @@ const AppShell = observer(function AppShell({
 
   return (
     <div className="flex h-[100dvh] min-h-[480px] flex-col">
-      <AppHeader languageLabel={adapter.label} onShare={doShare} />
+      <AppHeader onShare={doShare} />
       <main className="relative flex min-h-0 flex-1">
         <section className="min-h-0 min-w-0 flex-1">
           <CanvasPane />

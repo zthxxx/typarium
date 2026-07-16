@@ -1,22 +1,33 @@
 import { observer } from 'mobx-react-lite'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
 import { useService } from '#/views/di.tsx'
 
 /**
- * Top chrome: identity, language selector (astexplorer-style; only
- * TypeScript in phase 1), locale toggle and the share action.
+ * Top chrome: identity, locale picker and the share action. The
+ * source-language selector stays hidden until a second language
+ * adapter exists (the LanguageAdapter contract already covers it).
  * All behavior delegates to services; this component only renders.
  */
 export const AppHeader = observer(function AppHeader({
-  languageLabel,
   onShare,
 }: {
-  languageLabel: string
   onShare: (withContent: boolean) => void
 }) {
   const settings = useService(SettingsService)
-  const [shareOpen, setShareOpen] = useState(false)
+  const [localeOpen, setLocaleOpen] = useState(false)
+  const localeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!localeOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!localeRef.current?.contains(event.target as Node)) {
+        setLocaleOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    return () => window.removeEventListener('pointerdown', onPointerDown)
+  }, [localeOpen])
 
   return (
     <header className="flex h-14 items-center gap-4 border-b-[3px] border-(--color-ink) bg-white px-4">
@@ -31,79 +42,93 @@ export const AppHeader = observer(function AppHeader({
       </div>
 
       <div className="ml-auto flex items-center gap-2.5">
-        <label className="flex items-center gap-1.5 text-sm">
-          <span className="hidden text-(--color-ink-soft) sm:inline">
-            {settings.t('header.language')}
-          </span>
-          <select
-            className="rounded-xl border-2 border-(--color-ink) bg-white px-2 py-1 font-mono text-xs font-bold shadow-(--shadow-keycap)"
-            value={languageLabel}
-            onChange={() => {
-              // Single language in phase 1; the selector exists so the
-              // multi-language UI contract is already in place.
-            }}
-          >
-            <option value={languageLabel}>{languageLabel}</option>
-          </select>
-        </label>
-
-        <button
-          type="button"
-          className="rounded-full border-2 border-(--color-ink) bg-white px-3 py-1 font-mono text-xs font-bold whitespace-nowrap shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
-          onClick={() => {
-            settings.setLocale(settings.locale === 'zh' ? 'en' : 'zh')
-          }}
-        >
-          {settings.locale === 'zh' ? 'EN' : '中文'}
-        </button>
-
-        <div className="relative">
+        <div ref={localeRef} className="relative">
           <button
             type="button"
-            className="rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 py-1 text-sm font-bold whitespace-nowrap text-white shadow-[0_3px_0_var(--color-brand-deep)] transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
-            onClick={() => setShareOpen((open) => !open)}
+            aria-label={settings.t('header.language')}
+            aria-expanded={localeOpen}
+            className="flex items-center gap-1 rounded-full border-2 border-(--color-ink) bg-white px-2.5 py-1 font-mono text-xs font-bold shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+            onClick={() => setLocaleOpen((open) => !open)}
           >
-            {settings.t('header.share')}
+            <LocaleGlyph />
+            <span aria-hidden="true" className="text-[9px]">
+              {localeOpen ? '▲' : '▼'}
+            </span>
           </button>
-          {shareOpen ? (
-            <div className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-(--shadow-sticker)">
-              <ShareMenuItem
-                label={settings.t('header.share')}
-                onClick={() => {
-                  onShare(false)
-                  setShareOpen(false)
-                }}
-              />
-              <ShareMenuItem
-                label={settings.t('header.shareWithContent')}
-                onClick={() => {
-                  onShare(true)
-                  setShareOpen(false)
-                }}
-              />
+          {localeOpen ? (
+            <div className="absolute top-full right-0 z-30 mt-2 w-28 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-(--shadow-sticker)">
+              {(
+                [
+                  ['zh', '中文'],
+                  ['en', 'English'],
+                ] as const
+              ).map(([locale, label]) => (
+                <button
+                  key={locale}
+                  type="button"
+                  className={
+                    settings.locale === locale
+                      ? 'block w-full bg-(--color-paper) px-3 py-2 text-left font-mono text-xs font-bold text-(--color-brand)'
+                      : 'block w-full px-3 py-2 text-left font-mono text-xs hover:bg-(--color-paper)'
+                  }
+                  onClick={() => {
+                    settings.setLocale(locale)
+                    setLocaleOpen(false)
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           ) : null}
         </div>
+
+        <button
+          type="button"
+          className="rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 py-1 text-sm font-bold whitespace-nowrap text-white shadow-[0_3px_0_var(--color-brand-deep)] transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+          onClick={() => {
+            // One click, one link: always share WITH the editor content.
+            onShare(true)
+          }}
+        >
+          {settings.t('header.share')}
+        </button>
       </div>
     </header>
   )
 })
 
-function ShareMenuItem({
-  label,
-  onClick,
-}: {
-  label: string
-  onClick: () => void
-}) {
+/** The conventional i18n glyph: 文 over A with a translation slash. */
+function LocaleGlyph() {
   return (
-    <button
-      type="button"
-      className="block w-full px-4 py-2.5 text-left text-sm hover:bg-(--color-paper)"
-      onClick={onClick}
-    >
-      {label}
-    </button>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <text
+        x="4.5"
+        y="7.5"
+        textAnchor="middle"
+        fontSize="8.5"
+        fontWeight="700"
+        fill="var(--color-ink)"
+      >
+        文
+      </text>
+      <text
+        x="11"
+        y="14"
+        textAnchor="middle"
+        fontSize="9"
+        fontWeight="700"
+        fill="var(--color-ink)"
+      >
+        A
+      </text>
+      <path
+        d="M2.5 13.5 L8.5 2.5"
+        stroke="var(--color-ink-soft)"
+        strokeWidth="1"
+        opacity="0.5"
+      />
+    </svg>
   )
 }
 
