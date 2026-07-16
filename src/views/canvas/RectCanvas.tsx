@@ -157,8 +157,18 @@ const RectView = observer(function RectView({
         />
       ))}
       <span
-        className="absolute top-1 left-2.5 max-w-[calc(100%-20px)] truncate font-mono text-xs font-bold"
-        style={{ color: `var(--set-hue-${hue}-stroke)` }}
+        className="absolute max-w-[calc(100%-20px)] truncate font-mono text-sm font-bold"
+        style={{
+          // Sit inside the innermost equivalence ring so stacked ring
+          // borders never run through the text.
+          top: rings * RING_INSET + 3,
+          left: rings * RING_INSET + 10,
+          color: `var(--set-hue-${hue}-stroke)`,
+          // Soft white halo: keeps the label legible when equivalence
+          // rings stack borders right behind the text.
+          textShadow:
+            '0 0 3px white, 0 0 3px white, 0 1px 2px rgba(255,255,255,0.95), 0 -1px 2px rgba(255,255,255,0.95)',
+        }}
       >
         {rect.labels.join(' ≡ ')}
       </span>
