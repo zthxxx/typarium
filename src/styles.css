@@ -78,32 +78,18 @@ body {
 }
 
 /*
- * Breathing contour animation (ADR-0005 adjacent): a gentle dash-flow
- * plus scale pulse on set strokes. Amplitude is deliberately small;
- * the layout never moves, only the ink "breathes".
+ * The ∅ dot background (ADR-0005 v2): appears when `never` is displayed.
+ * The empty set is rendered as texture, not area — it exists inside
+ * every region, so it is the backdrop everything else sits on.
  */
-@media (prefers-reduced-motion: no-preference) {
-  .set-contour {
-    animation: contour-breathe 4.2s ease-in-out infinite;
-  }
-  .set-contour-flow {
-    stroke-dasharray: 10 6;
-    animation: contour-flow 2.6s linear infinite;
-  }
-  @keyframes contour-breathe {
-    0%,
-    100% {
-      stroke-width: var(--contour-width, 3px);
-    }
-    50% {
-      stroke-width: calc(var(--contour-width, 3px) + 1.2px);
-    }
-  }
-  @keyframes contour-flow {
-    to {
-      stroke-dashoffset: -32;
-    }
-  }
+.canvas-dots {
+  background-color: var(--color-board);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-ink) 22%, transparent) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 18px 18px;
 }
 
 /* Focus visibility: game-feel thick focus ring in brand color */

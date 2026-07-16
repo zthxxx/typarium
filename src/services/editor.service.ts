@@ -1,4 +1,5 @@
 import { makeAutoObservable } from 'mobx'
+import type { VirtualType } from '#/core/analysis/adapter.ts'
 import type { AnalysisService } from '#/services/analysis.service.ts'
 import type { PersistenceService } from '#/services/persistence.service.ts'
 
@@ -8,14 +9,17 @@ const ANALYZE_DEBOUNCE_MS = 1_200
 const SAVE_DEBOUNCE_MS = 300
 
 /**
- * Single source of truth for the editor text. Monaco mirrors this
- * observable; presets and share-links mutate it only through here.
+ * Single source of truth for the editor text. Snippet presets and
+ * share-links mutate it only through here. Virtual preset types come
+ * from the injected getter at analysis time (owned by PresetService).
  */
 export class EditorService {
   code = ''
 
   private analyzeTimer: ReturnType<typeof setTimeout> | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
+  private virtualTypesGetter: () => Array<VirtualType> = () => []
+  private activePresetsGetter: () => Array<string> = () => []
 
   constructor(
     private readonly analysis: AnalysisService,
@@ -23,13 +27,29 @@ export class EditorService {
   ) {
     makeAutoObservable<
       EditorService,
-      'analysis' | 'persistence' | 'analyzeTimer' | 'saveTimer'
+      | 'analysis'
+      | 'persistence'
+      | 'analyzeTimer'
+      | 'saveTimer'
+      | 'virtualTypesGetter'
+      | 'activePresetsGetter'
     >(this, {
       analysis: false,
       persistence: false,
       analyzeTimer: false,
       saveTimer: false,
+      virtualTypesGetter: false,
+      activePresetsGetter: false,
     })
+  }
+
+  /** Wired by the composition root after PresetService exists. */
+  connectPresets(deps: {
+    virtualTypes: () => Array<VirtualType>
+    activeLabels: () => Array<string>
+  }): void {
+    this.virtualTypesGetter = deps.virtualTypes
+    this.activePresetsGetter = deps.activeLabels
   }
 
   /** User keystrokes: debounced persistence + debounced analysis. */
@@ -44,46 +64,50 @@ export class EditorService {
   replaceCode(code: string): void {
     this.code = code
     this.scheduleSave()
-    void this.analysis.analyze(code)
+    this.analyzeNow()
   }
 
-  /** Preset button toggling: insert the line, or remove it when present. */
-  togglePresetLine(insertText: string): void {
-    const line = insertText.trim()
-    const lines = this.code.split('\n')
-    const existing = lines.findIndex((candidate) => candidate.trim() === line)
-    const next =
-      existing >= 0
-        ? [...lines.slice(0, existing), ...lines.slice(existing + 1)]
-        : appendLine(lines, line)
-    this.replaceCode(next.join('\n'))
+  /** Virtual preset toggles re-analyze immediately (no typing involved). */
+  analyzeNow(): void {
+    if (this.analyzeTimer) clearTimeout(this.analyzeTimer)
+    this.scheduleSave()
+    void this.analysis.analyze(this.code, this.virtualTypesGetter())
   }
 
-  hasPresetLine(insertText: string): boolean {
-    const line = insertText.trim()
-    return this.code.split('\n').some((candidate) => candidate.trim() === line)
+  /**
+   * Snippet insertion (product rule): append `export type CN = <rhs>`
+   * with auto-incremented N and a blank line between consecutive
+   * declarations.
+   */
+  insertSnippetLine(rhs: string): void {
+    const nextIndex =
+      Math.max(
+        0,
+        ...[...this.code.matchAll(/^export type C(\d+)\b/gm)].map((match) =>
+          Number(match[1]),
+        ),
+      ) + 1
+    const line = `export type C${nextIndex} = ${rhs}`
+    const trimmed = this.code.replace(/\s+$/, '')
+    const next = trimmed === '' ? `${line}\n` : `${trimmed}\n\n${line}\n`
+    this.replaceCode(next)
   }
 
   private scheduleAnalyze(): void {
     if (this.analyzeTimer) clearTimeout(this.analyzeTimer)
     this.analyzeTimer = setTimeout(() => {
-      void this.analysis.analyze(this.code)
+      void this.analysis.analyze(this.code, this.virtualTypesGetter())
     }, ANALYZE_DEBOUNCE_MS)
   }
 
   private scheduleSave(): void {
     if (this.saveTimer) clearTimeout(this.saveTimer)
     this.saveTimer = setTimeout(() => {
-      void this.persistence.saveDocument(this.code, this.analysis.languageId)
+      void this.persistence.saveDocument({
+        code: this.code,
+        languageId: this.analysis.languageId,
+        presets: this.activePresetsGetter(),
+      })
     }, SAVE_DEBOUNCE_MS)
   }
-}
-
-function appendLine(lines: Array<string>, line: string): Array<string> {
-  const result = [...lines]
-  if (result.length > 0 && result[result.length - 1].trim() !== '') {
-    result.push('')
-  }
-  result.push(line)
-  return result
 }

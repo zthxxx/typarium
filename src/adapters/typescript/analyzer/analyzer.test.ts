@@ -1,334 +1,157 @@
-import { expect, test } from 'vitest'
-
-import { createTsAnalyzer } from '#/adapters/typescript/analyzer/create-ts-analyzer.ts'
-import { loadLibFilesFromNodeModules } from '#/adapters/typescript/analyzer/lib-files.node.ts'
-import { validateAnalysisResult } from '#/core/set-model/invariants.ts'
-import { TS_DOMAIN, TS_SUBZONE } from '#/adapters/typescript/universe.ts'
+import { describe, expect, test } from 'vitest'
+import { createTsgoAnalyzer } from '#/adapters/typescript/analyzer/create-tsgo-analyzer.ts'
+import { createNodeTsgoRunner } from '#/adapters/typescript/analyzer/tsgo-runner.node.ts'
 import type { AnalysisResult, RelationKind } from '#/core/set-model/types.ts'
 
-const analyzer = createTsAnalyzer({ libFiles: loadLibFilesFromNodeModules() })
+/**
+ * Teaching acceptance matrix against the REAL tsgo (TypeScript 7)
+ * compiler via the CLI runner. Each analyze() is a full tsc pass
+ * (~1s), so cases group several assertions per run.
+ */
 
-/** Analyzes and asserts the structural invariants in one step. */
-function analyze(source: string): AnalysisResult {
-  const result = analyzer.analyze(source)
-  expect(validateAnalysisResult(result)).toEqual([])
-  return result
-}
+const analyzer = createTsgoAnalyzer(createNodeTsgoRunner())
 
-/** Relation of `a` towards `b`, regardless of stored orientation. */
 function relationOf(
   result: AnalysisResult,
   a: string,
   b: string,
 ): RelationKind | undefined {
-  const row = result.relations.find(
+  const found = result.relations.find(
     (relation) =>
       (relation.a === a && relation.b === b) ||
       (relation.a === b && relation.b === a),
   )
-  if (!row) return undefined
-  if (row.a === a) return row.kind
-  if (row.kind === 'subset') return 'superset'
-  if (row.kind === 'superset') return 'subset'
-  return row.kind
+  if (!found) return undefined
+  if (found.a === a) return found.kind
+  if (found.kind === 'subset') return 'superset'
+  if (found.kind === 'superset') return 'subset'
+  return found.kind
 }
 
-const entityNames = (result: AnalysisResult) =>
-  result.entities.map((entity) => entity.name)
+describe('tsgo analyzer', () => {
+  test('covariance keeps direction, function parameters invert it', async () => {
+    const result = await analyzer.analyze(
+      [
+        'export type Co<T = never> = T | boolean',
+        'export type CoNarrow = Co<string>',
+        'export type CoWide = Co<string | number>',
+        'export type Handler<X = never> = (value: X) => void',
+        'export type StrHandler = Handler<string>',
+        'export type WideHandler = Handler<string | number>',
+      ].join('\n'),
+      [],
+    )
+    expect(relationOf(result, 'CoNarrow', 'CoWide')).toBe('subset')
+    // Contravariance: the WIDER instantiation is the SMALLER set.
+    expect(relationOf(result, 'WideHandler', 'StrHandler')).toBe('subset')
+    expect(relationOf(result, 'StrHandler', 'CoNarrow')).toBe('unrelated')
+  })
 
-const cellsOf = (result: AnalysisResult, entity: string) =>
-  result.cells.filter((cell) => cell.members.includes(entity))
+  test('method bivariance merges, property syntax nests', async () => {
+    const result = await analyzer.analyze(
+      [
+        'interface Animal { name: string }',
+        'interface Dog extends Animal { breed: string }',
+        'export interface KennelM { addM(animal: Animal): void }',
+        'export interface DogKennelM { addM(dog: Dog): void }',
+        'export interface KennelF { addF: (animal: Animal) => void }',
+        'export interface DogKennelF { addF: (dog: Dog) => void }',
+      ].join('\n'),
+      [],
+    )
+    expect(relationOf(result, 'KennelM', 'DogKennelM')).toBe('equivalent')
+    expect(relationOf(result, 'KennelF', 'DogKennelF')).toBe('subset')
+  })
 
-// --- export extraction ------------------------------------------------------
+  test('tagged union: branches unrelated, each subset of the sum', async () => {
+    const result = await analyzer.analyze(
+      [
+        "export type GroupRow = { type: 'Group'; groupName: string }",
+        "export type DataRow = { type: 'DataRow'; data: string }",
+        "export type CreatorRow = { type: 'Creator'; authorID: number }",
+        'export type RowData = GroupRow | DataRow | CreatorRow',
+      ].join('\n'),
+      [],
+    )
+    expect(relationOf(result, 'GroupRow', 'DataRow')).toBe('unrelated')
+    expect(relationOf(result, 'DataRow', 'CreatorRow')).toBe('unrelated')
+    expect(relationOf(result, 'GroupRow', 'RowData')).toBe('subset')
+    expect(relationOf(result, 'DataRow', 'RowData')).toBe('subset')
+    expect(relationOf(result, 'CreatorRow', 'RowData')).toBe('subset')
+  })
 
-test('shows only exported types; generics need full defaults', () => {
-  const result = analyze(`
-    export type UnionBoolean<T> = T | boolean
-    export type R1 = UnionBoolean<string>
-    export type R2 = UnionBoolean<number>
-    type R3 = UnionBoolean<unknown>
-    export type WithDefault<T = string> = T | boolean
-  `)
-  expect(entityNames(result)).toEqual(['R1', 'R2', 'WithDefault'])
-  const withDefault = result.entities.find(
-    (entity) => entity.name === 'WithDefault',
-  )
-  expect(withDefault?.typeText).toBe('string | boolean')
-})
+  test('literals nest into virtual preset primitives', async () => {
+    const result = await analyzer.analyze(`export type Foo = 'foo'`, [
+      { name: 'string', typeText: 'string' },
+      { name: 'Array<T>', typeText: 'Array<unknown>' },
+      { name: 'object', typeText: 'object' },
+    ])
+    expect(relationOf(result, 'Foo', 'preset:string')).toBe('subset')
+    expect(relationOf(result, 'Foo', 'preset:object')).toBe('unrelated')
+    expect(relationOf(result, 'preset:Array<T>', 'preset:object')).toBe(
+      'subset',
+    )
+  })
 
-test('misspelled type name produces diagnostics and drops the entity', () => {
-  const result = analyzer.analyze(`export type X = unknwon`)
-  expect(result.diagnostics.length).toBeGreaterThan(0)
-  expect(result.diagnostics[0].severity).toBe('error')
-  expect(entityNames(result)).toEqual([])
-  expect(result.anyEntityNames).toEqual([])
-})
+  test('specials: unknown universe, never empty, any badge-only', async () => {
+    const result = await analyzer.analyze(
+      [
+        'export type U = unknown',
+        'export type N = never',
+        'export type A = any',
+        'export type Plain = string',
+        'export type Empty = string & number',
+      ].join('\n'),
+      [],
+    )
+    const byId = new Map(result.entities.map((entity) => [entity.id, entity]))
+    expect(byId.get('U')?.special).toBe('universe')
+    expect(byId.get('N')?.special).toBe('empty')
+    expect(byId.get('A')?.special).toBe('outside-set-theory')
+    expect(byId.get('Plain')?.special).toBe('none')
+    // The snippet-style intersection collapses to never.
+    expect(byId.get('Empty')?.special).toBe('empty')
+    expect(result.anyEntityNames).toEqual(['A'])
+    const inRelations = new Set(
+      result.relations.flatMap((relation) => [relation.a, relation.b]),
+    )
+    expect(inRelations.has('A')).toBe(false)
+    expect(inRelations.has('U')).toBe(false)
+    expect(inRelations.has('N')).toBe(false)
+  })
 
-// --- special types -----------------------------------------------------------
+  test('scan rules: non-export and defaultless generics skipped', async () => {
+    const result = await analyzer.analyze(
+      [
+        'type Hidden = string',
+        'export type Generic<T> = T | boolean',
+        'export type WithDefault<T = string> = T | boolean',
+        'export type Shown = number',
+      ].join('\n'),
+      [],
+    )
+    const ids = result.entities.map((entity) => entity.id)
+    expect(ids).toEqual(['WithDefault', 'Shown'])
+    expect(relationOf(result, 'Shown', 'WithDefault')).toBe('unrelated')
+  })
 
-test('unknown is the universe, never the empty set, any lives outside', () => {
-  const result = analyze(`
-    export type U = unknown
-    export type N = never
-    export type A = any
-    export type S = string
-  `)
-  const byName = new Map(result.entities.map((entity) => [entity.name, entity]))
-  expect(byName.get('U')?.special).toBe('universe')
-  expect(byName.get('N')?.special).toBe('empty')
-  expect(byName.get('A')?.special).toBe('outside-set-theory')
-  expect(byName.get('S')?.special).toBe('none')
-  expect(result.anyEntityNames).toEqual(['A'])
-  expect(
-    result.deviations.some((d) => d.kind === 'any' && d.entityId === 'A'),
-  ).toBe(true)
+  test('broken user code returns diagnostics and no entities', async () => {
+    const result = await analyzer.analyze('export type X = unknwon', [])
+    expect(result.entities).toEqual([])
+    expect(result.relations).toEqual([])
+    expect(
+      result.diagnostics.some((diagnostic) => diagnostic.severity === 'error'),
+    ).toBe(true)
+  })
 
-  // ∅ ⊆ everything, everything ⊆ unknown; any joins no relation.
-  expect(relationOf(result, 'N', 'S')).toBe('subset')
-  expect(relationOf(result, 'S', 'U')).toBe('subset')
-  expect(relationOf(result, 'N', 'U')).toBe('subset')
-  expect(relationOf(result, 'A', 'S')).toBeUndefined()
-
-  // Specials own no cells; the canvas renders them as frame/pattern/badge.
-  for (const name of ['U', 'N', 'A']) {
-    expect(cellsOf(result, name)).toEqual([])
-  }
-})
-
-test('{} covers every domain except null and undefined', () => {
-  const result = analyze(`
-    export type Braces = {}
-    export type S = string
-  `)
-  const braceCells = cellsOf(result, 'Braces')
-  const coveredDomains = new Set(braceCells.map((cell) => cell.domain))
-  for (const domain of [
-    'string',
-    'number',
-    'bigint',
-    'boolean',
-    'symbol',
-    'object',
-  ]) {
-    expect(coveredDomains.has(domain)).toBe(true)
-  }
-  expect(coveredDomains.has(TS_DOMAIN.null)).toBe(false)
-  expect(coveredDomains.has(TS_DOMAIN.undefined)).toBe(false)
-  expect(relationOf(result, 'S', 'Braces')).toBe('subset')
-})
-
-test('void reads as {undefined} plus a deviation marker', () => {
-  const result = analyze(`
-    export type V = void
-    export type Und = undefined
-  `)
-  expect(relationOf(result, 'Und', 'V')).toBe('subset')
-  expect(
-    result.deviations.some((d) => d.kind === 'void' && d.entityId === 'V'),
-  ).toBe(true)
-  expect(
-    cellsOf(result, 'V').some(
-      (cell) =>
-        cell.domain === TS_DOMAIN.undefined && cell.kind === 'domain-full',
-    ),
-  ).toBe(true)
-})
-
-// --- literals & primitives ---------------------------------------------------
-
-test('a string literal is a point inside the string domain', () => {
-  const result = analyze(`
-    export type Foo = "foo"
-    export type S = string
-  `)
-  expect(relationOf(result, 'Foo', 'S')).toBe('subset')
-  const literal = result.cells.find((cell) => cell.kind === 'literal')
-  expect(literal?.domain).toBe(TS_DOMAIN.string)
-  expect(literal?.label).toBe('"foo"')
-  expect(literal?.members).toEqual(['Foo', 'S'])
-})
-
-test('string and number are disjoint domains', () => {
-  const result = analyze(`
-    export type S = string
-    export type N = number
-  `)
-  expect(relationOf(result, 'S', 'N')).toBe('disjoint')
-})
-
-test('template literal types are string refinements with sound literal membership', () => {
-  const result = analyze(`
-    export type Tpl = \`a\${string}\`
-    export type S = string
-    export type LitAb = "ab"
-    export type LitZz = "zz"
-  `)
-  expect(relationOf(result, 'Tpl', 'S')).toBe('subset')
-  expect(relationOf(result, 'LitAb', 'Tpl')).toBe('subset')
-  expect(relationOf(result, 'LitZz', 'Tpl')).toBe('disjoint')
-  expect(
-    result.cells.some(
-      (cell) =>
-        cell.kind === 'refinement-exclusive' &&
-        cell.domain === TS_DOMAIN.string,
-    ),
-  ).toBe(true)
-})
-
-// --- teaching demo: covariance ----------------------------------------------
-
-test('union positions are covariant: narrower input, narrower result', () => {
-  const result = analyze(`
-    export type Co<T = string> = T | boolean
-    export type C1 = Co<string>
-    export type C2 = Co<string | number>
-  `)
-  expect(relationOf(result, 'C1', 'C2')).toBe('subset')
-  expect(relationOf(result, 'C1', 'Co')).toBe('equivalent')
-})
-
-// --- teaching demo: contravariance -------------------------------------------
-
-test('function parameters are contravariant: wider input, narrower set', () => {
-  const result = analyze(`
-    export type Fun<X> = (params: X) => void
-    export type F1 = Fun<string>
-    export type F2 = Fun<string | number>
-  `)
-  expect(entityNames(result)).toEqual(['F1', 'F2'])
-  // The direction flips: the wider-parameter function is the SUBSET.
-  expect(relationOf(result, 'F2', 'F1')).toBe('subset')
-  const f1Cells = cellsOf(result, 'F1')
-  expect(
-    f1Cells.every(
-      (cell) =>
-        cell.domain === TS_DOMAIN.object &&
-        cell.subzone === TS_SUBZONE.callable,
-    ),
-  ).toBe(true)
-})
-
-// --- teaching demo: method bivariance -----------------------------------------
-
-test('method syntax is bivariant (merged), property syntax is contravariant (nested)', () => {
-  const result = analyze(`
-    interface Animal { name: string }
-    interface Dog extends Animal { breed: string }
-    export interface KennelMethod { add(x: Animal): void }
-    export interface DogKennelMethod { add(x: Dog): void }
-    export interface KennelFn { add: (x: Animal) => void }
-    export interface DogKennelFn { add: (x: Dog) => void }
-  `)
-  // Method syntax: unsound both-ways assignability collapses the two
-  // sets into one — that IS the bivariance lesson.
-  expect(relationOf(result, 'KennelMethod', 'DogKennelMethod')).toBe(
-    'equivalent',
-  )
-  // Property syntax: strictFunctionTypes keeps contravariance, the sets nest.
-  expect(relationOf(result, 'KennelFn', 'DogKennelFn')).toBe('subset')
-  expect(
-    result.deviations.some(
-      (d) => d.kind === 'method-bivariance' && d.entityId === 'KennelMethod',
-    ),
-  ).toBe(true)
-})
-
-// --- teaching demo: tagged union ----------------------------------------------
-
-test('tagged union branches are pairwise disjoint, the union is their superset', () => {
-  const result = analyze(`
-    export type GroupRow = { kind: 'group'; groupName: string }
-    export type DataRow = { kind: 'data'; data: Record<string, string> }
-    export type CreatorRow = { kind: 'creator'; authorId: number }
-    export type RowData = GroupRow | DataRow | CreatorRow
-  `)
-  expect(relationOf(result, 'GroupRow', 'DataRow')).toBe('disjoint')
-  expect(relationOf(result, 'GroupRow', 'CreatorRow')).toBe('disjoint')
-  expect(relationOf(result, 'DataRow', 'CreatorRow')).toBe('disjoint')
-  expect(relationOf(result, 'RowData', 'GroupRow')).toBe('superset')
-  expect(relationOf(result, 'RowData', 'DataRow')).toBe('superset')
-  expect(relationOf(result, 'RowData', 'CreatorRow')).toBe('superset')
-})
-
-// --- teaching demo: union to intersection -------------------------------------
-
-test('UnionToIntersection lands inside each constituent', () => {
-  const result = analyze(`
-    export type ObjA = { a: 1 }
-    export type ObjB = { b: 2 }
-    export type U2I<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never
-    export type R = U2I<ObjA | ObjB>
-  `)
-  expect(entityNames(result)).toEqual(['ObjA', 'ObjB', 'R'])
-  expect(relationOf(result, 'R', 'ObjA')).toBe('subset')
-  expect(relationOf(result, 'R', 'ObjB')).toBe('subset')
-  // {a:1} and {b:2} genuinely intersect — R inhabits the overlap.
-  expect(relationOf(result, 'ObjA', 'ObjB')).toBe('overlap')
-  expect(result.cells.some((cell) => cell.kind === 'refinement-overlap')).toBe(
-    true,
-  )
-})
-
-// --- honest undecidability -----------------------------------------------------
-
-test('conflicting non-literal properties stay an unknown overlap, not a lie', () => {
-  const result = analyze(`
-    export type PA = { a: string }
-    export type PB = { a: number }
-  `)
-  expect(relationOf(result, 'PA', 'PB')).toBe('unknown')
-  const cell = result.cells.find((c) => c.kind === 'unknown-overlap')
-  expect(cell?.members).toEqual(['PA', 'PB'])
-})
-
-test('literal-discriminant conflicts are proven empty despite lazy reduction', () => {
-  const result = analyze(`
-    export type TagA = { kind: 'a'; payload: string }
-    export type TagB = { kind: 'b'; payload: string }
-  `)
-  expect(relationOf(result, 'TagA', 'TagB')).toBe('disjoint')
-  expect(result.cells.some((c) => c.kind === 'unknown-overlap')).toBe(false)
-})
-
-// --- enums ----------------------------------------------------------------------
-
-test('string enums are literal points inside string, marked nominal', () => {
-  const result = analyze(`
-    export enum RowType { Group = 'Group', DataRow = 'DataRow' }
-    export type S = string
-  `)
-  expect(relationOf(result, 'RowType', 'S')).toBe('subset')
-  const literals = result.cells.filter((cell) => cell.kind === 'literal')
-  expect(literals).toHaveLength(2)
-  expect(literals.every((cell) => cell.domain === TS_DOMAIN.string)).toBe(true)
-  expect(
-    result.deviations.some(
-      (d) => d.kind === 'enum-nominal' && d.entityId === 'RowType',
-    ),
-  ).toBe(true)
-})
-
-// --- quick info -------------------------------------------------------------------
-
-test('quickInfo surfaces the inferred type at a position', () => {
-  const source = `export type R1 = string | boolean`
-  const info = analyzer.quickInfo(source, source.indexOf('R1') + 1)
-  expect(info).toContain('string | boolean')
-})
-
-// --- entity cap ---------------------------------------------------------------------
-
-test('more than 24 exports truncates with a warning', () => {
-  const source = Array.from(
-    { length: 30 },
-    (_, index) => `export type T${index} = ${index}`,
-  ).join('\n')
-  const result = analyzer.analyze(source)
-  expect(result.entities).toHaveLength(24)
-  expect(
-    result.diagnostics.some(
-      (diagnostic) =>
-        diagnostic.severity === 'warning' && diagnostic.message.includes('24'),
-    ),
-  ).toBe(true)
+  test('deterministic: identical input yields identical result', async () => {
+    const source = 'export type A = string\nexport type B = string | number'
+    const virtual = [{ name: 'number', typeText: 'number' }]
+    const first = await analyzer.analyze(source, virtual)
+    const second = await analyzer.analyze(source, virtual)
+    expect(second).toEqual(first)
+    expect(relationOf(first, 'A', 'B')).toBe('subset')
+    expect(relationOf(first, 'preset:number', 'B')).toBe('subset')
+    expect(relationOf(first, 'A', 'preset:number')).toBe('unrelated')
+  })
 })

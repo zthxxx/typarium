@@ -12,25 +12,20 @@ const en = {
   'header.share': 'Share',
   'header.shareWithContent': 'Share with content',
   'header.shareCopied': 'Share link copied to clipboard',
-  'presets.title': 'Presets',
-  'canvas.universeLabel': 'unknown = the universe',
+  'presets.title': 'Types',
+  'presets.snippets': 'Snippets',
   'canvas.neverLegend': '∅ never = the empty set, inside every set',
-  'canvas.unknownOverlapHint':
-    'TypeScript cannot decide whether this intersection is empty',
-  'canvas.emptyHint': 'Export a type on the right to see it drawn as a set',
-  'canvas.truncated': 'Too many exported types; showing the first ones only',
+  'canvas.neverRow': '∅ never',
+  'canvas.emptyHint': 'Pick a type below or export one in the editor',
   'anyBadge.label': 'any',
   'anyBadge.tooltip':
-    'any is outside set theory: it is treated as assignable both ways, breaking subset reasoning. Entities resolved to any: {names}',
-  'deviation.void':
-    'void is not a value set: it behaves like undefined plus a special rule for function return positions',
-  'deviation.method-bivariance':
-    'Method parameters stay bivariant even under strictFunctionTypes — a deliberate unsoundness',
-  'deviation.enum-nominal':
-    'Enums are nominal: structurally equal enums are still distinct sets',
+    'any is outside set theory: it is treated as assignable both ways, breaking subset reasoning. Resolved to any: {names}',
+  'editor.title': 'Editor',
+  'editor.collapse': 'Collapse editor',
+  'editor.expand': 'Open editor',
+  'editor.resize': 'Drag to resize editor',
   'editor.loading': 'Loading editor…',
-  'footer.engine': 'Type analysis engine: {version} (JS compiler API)',
-  'error.analysis': 'Analysis failed; the last valid diagram is shown',
+  'footer.engine': 'Type analysis engine: {version}',
 } as const
 
 export type MessageKey = keyof typeof en
@@ -41,23 +36,20 @@ const zh: Record<MessageKey, string> = {
   'header.share': '分享',
   'header.shareWithContent': '携带当前内容分享',
   'header.shareCopied': '分享链接已复制到剪贴板',
-  'presets.title': '预设类型',
-  'canvas.universeLabel': 'unknown = 全集',
+  'presets.title': '类型',
+  'presets.snippets': '代码模板',
   'canvas.neverLegend': '∅ never = 空集，存在于任何集合之中',
-  'canvas.unknownOverlapHint': 'TypeScript 无法判定这个交集是否为空',
-  'canvas.emptyHint': '在右侧 export 一个类型，这里就会画出它的集合',
-  'canvas.truncated': '导出类型过多，仅展示前若干个',
+  'canvas.neverRow': '∅ never',
+  'canvas.emptyHint': '点下方类型，或在编辑器里 export 一个类型',
   'anyBadge.label': 'any',
   'anyBadge.tooltip':
-    'any 不属于集合范畴：它被视为双向可赋值，破坏子集推理。解析为 any 的导出：{names}',
-  'deviation.void':
-    'void 不是一个值集合：它近似 undefined，外加函数返回位置的特殊规则',
-  'deviation.method-bivariance':
-    '方法参数在 strictFunctionTypes 下仍是双向协变 —— TypeScript 有意保留的不健全',
-  'deviation.enum-nominal': 'enum 是名义类型：结构相同的两个 enum 仍是不同集合',
+    'any 不属于集合范畴：它被视为双向可赋值，破坏子集推理。解析为 any 的有：{names}',
+  'editor.title': '编辑器',
+  'editor.collapse': '收起编辑器',
+  'editor.expand': '打开编辑器',
+  'editor.resize': '拖拽调整编辑器宽度',
   'editor.loading': '编辑器加载中…',
-  'footer.engine': '类型分析引擎：{version}（JS compiler API）',
-  'error.analysis': '分析失败，画布保留上一次有效结果',
+  'footer.engine': '类型分析引擎：{version}',
 }
 
 export const dictionaries: Record<Locale, Record<MessageKey, string>> = {

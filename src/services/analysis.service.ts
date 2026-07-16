@@ -1,6 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx'
-import { validateAnalysisResult } from '#/core/set-model/invariants.ts'
-import type { LanguageAdapter } from '#/core/analysis/adapter.ts'
+import type { LanguageAdapter, VirtualType } from '#/core/analysis/adapter.ts'
 import type {
   AnalysisResult,
   SourceDiagnostic,
@@ -33,21 +32,15 @@ export class AnalysisService {
     return this.adapter.id
   }
 
-  async analyze(source: string): Promise<void> {
+  async analyze(
+    source: string,
+    virtualTypes: Array<VirtualType>,
+  ): Promise<void> {
     const ticket = ++this.sequence
     this.analyzing = true
     try {
-      const result = await this.adapter.analyze(source)
+      const result = await this.adapter.analyze(source, virtualTypes)
       if (ticket !== this.sequence) return
-
-      if (import.meta.env.DEV) {
-        const violations = validateAnalysisResult(result)
-        if (violations.length > 0) {
-          // An adapter emitting IR that would draw a lying diagram is a
-          // bug worth failing loudly for in development.
-          console.error('[typarium] IR invariant violations', violations)
-        }
-      }
 
       runInAction(() => {
         this.diagnostics = result.diagnostics
@@ -70,9 +63,5 @@ export class AnalysisService {
         console.error('[typarium] analysis failed', error)
       }
     }
-  }
-
-  async quickInfo(source: string, position: number): Promise<string | null> {
-    return this.adapter.quickInfo(source, position)
   }
 }

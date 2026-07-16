@@ -35,12 +35,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: ^1.132.0
         version: 1.168.20(@tanstack/react-router@1.170.18(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(rolldown@1.1.5)(vite@8.1.4(@types/node@22.20.1)(jiti@2.7.0)(yaml@2.9.0))
-      '@typescript/vfs':
-        specifier: ^1.6.4
-        version: 1.6.4(typescript@5.9.3)
-      bubblesets-js:
-        specifier: ^3.0.1
-        version: 3.0.1
       comlink:
         specifier: ^4.4.2
         version: 4.4.2
@@ -74,6 +68,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.18
         version: 4.3.2
+      tsgo-wasm:
+        specifier: ^7.0.2
+        version: 7.0.2
     devDependencies:
       '@commitlint/cli':
         specifier: ^21.2.1
@@ -1201,11 +1198,6 @@ packages:
     resolution: {integrity: sha512-mrtuL8Nsn6gi2H4mo5KMTp823M+3Q19Ew/i+Zlikq20tIMm99C3Ez0dCmkWWnxut20esQvTg8aUSEhMcAOXhEw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@typescript/vfs@1.6.4':
-    resolution: {integrity: sha512-PJFXFS4ZJKiJ9Qiuix6Dz/OwEIqHD7Dme1UwZhTK11vR+5dqW2ACbdndWQexBzCx+CPuMe5WBYQWCsFyGlQLlQ==}
-    peerDependencies:
-      typescript: '*'
-
   '@unrs/resolver-binding-android-arm-eabi@1.12.2':
     resolution: {integrity: sha512-g5T90pqg1bo/7mytQx6F4iBNC0Wsh9cu+z9veDbFjc7HjpesJFWD7QMS0NGStXM075+7dJPPVvBbpZlnrdpi/w==}
     cpu: [arm]
@@ -1443,9 +1435,6 @@ packages:
     resolution: {integrity: sha512-FQBYNK15VMslhLHpA7+n+n1GOlF1kId2xcCg7/j95f24AOF6VDYMNH4mFxF7KuaTdv627faazpOAjFzMrfJOUw==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
-
-  bubblesets-js@3.0.1:
-    resolution: {integrity: sha512-EKPfysvIU5+u5RLW3mOr94wxzA3nKzqMBX0F95L95BPBDZPVgLBUnT0kJNz4UK/TXbGs8G7yEgl5MvibRBCQoQ==}
 
   callsites@3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
@@ -2447,6 +2436,10 @@ packages:
     resolution: {integrity: sha512-EDyGAwH1gO0Ausm9gV6T2nUvBgXT5kGoCMJPllOaooZ+4VvJiKBdZE7wK18N1deEowhcUptS+5GXZK8U/fvpwA==}
     peerDependencies:
       typescript: '>=4.0.0'
+
+  tsgo-wasm@7.0.2:
+    resolution: {integrity: sha512-wiu1mK6759F1r5T7w8mGduvjvS8sEIycMdWPxCOThQuOs73zK0Uwzxu0WZRvnR6iOMt+7/j8iGdXzNMZkl5ocA==}
+    hasBin: true
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -3893,13 +3886,6 @@ snapshots:
       '@typescript-eslint/types': 8.64.0
       eslint-visitor-keys: 5.0.1
 
-  '@typescript/vfs@1.6.4(typescript@5.9.3)':
-    dependencies:
-      debug: 4.4.3
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - supports-color
-
   '@unrs/resolver-binding-android-arm-eabi@1.12.2':
     optional: true
 
@@ -4094,8 +4080,6 @@ snapshots:
       electron-to-chromium: 1.5.392
       node-releases: 2.0.51
       update-browserslist-db: 1.2.3(browserslist@4.28.6)
-
-  bubblesets-js@3.0.1: {}
 
   callsites@3.1.0: {}
 
@@ -5013,6 +4997,8 @@ snapshots:
     dependencies:
       picomatch: 4.0.5
       typescript: 5.9.3
+
+  tsgo-wasm@7.0.2: {}
 
   tslib@2.8.1:
     optional: true

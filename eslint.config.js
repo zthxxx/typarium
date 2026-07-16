@@ -18,6 +18,11 @@ export default [
     },
   },
   {
-    ignores: ['eslint.config.js', 'prettier.config.js'],
+    ignores: [
+      'eslint.config.js',
+      'prettier.config.js',
+      // Vendored Go wasm_exec runtime (plain JS, upstream style).
+      'src/adapters/typescript/analyzer/go-runtime.js',
+    ],
   },
 ]

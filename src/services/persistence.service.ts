@@ -1,14 +1,18 @@
 import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 
+export interface StoredDocument {
+  code: string
+  languageId: string
+  /** Toggled virtual preset labels (revision 2 of the schema). */
+  presets?: Array<string>
+  updatedAt: number
+}
+
 interface TypariumDb extends DBSchema {
   documents: {
     key: string
-    value: {
-      code: string
-      languageId: string
-      updatedAt: number
-    }
+    value: StoredDocument
   }
 }
 
@@ -17,8 +21,8 @@ const DB_VERSION = 1
 const CURRENT_DOCUMENT_KEY = 'current'
 
 /**
- * IndexedDB persistence for user input (ADR-0006): everything typed in
- * the editor survives a refresh. Saves are last-write-wins on a single
+ * IndexedDB persistence for user input (ADR-0006): everything typed or
+ * toggled survives a refresh. Saves are last-write-wins on a single
  * document record — good enough for a single-tab local tool; multi-tab
  * conflicts resolve to the most recent edit.
  */
@@ -34,12 +38,14 @@ export class PersistenceService {
     return this.dbPromise
   }
 
-  async saveDocument(code: string, languageId: string): Promise<void> {
+  async saveDocument(
+    document: Omit<StoredDocument, 'updatedAt'>,
+  ): Promise<void> {
     try {
       const db = await this.db()
       await db.put(
         'documents',
-        { code, languageId, updatedAt: Date.now() },
+        { ...document, updatedAt: Date.now() },
         CURRENT_DOCUMENT_KEY,
       )
     } catch {
@@ -48,13 +54,10 @@ export class PersistenceService {
     }
   }
 
-  async loadDocument(): Promise<{ code: string; languageId: string } | null> {
+  async loadDocument(): Promise<StoredDocument | null> {
     try {
       const db = await this.db()
-      const record = await db.get('documents', CURRENT_DOCUMENT_KEY)
-      return record
-        ? { code: record.code, languageId: record.languageId }
-        : null
+      return (await db.get('documents', CURRENT_DOCUMENT_KEY)) ?? null
     } catch {
       return null
     }

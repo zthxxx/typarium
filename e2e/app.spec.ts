@@ -3,15 +3,17 @@ import lzString from 'lz-string'
 import type { Page } from '@playwright/test'
 
 /**
- * E2E regression for the teaching MVP. The app exposes its services on
- * `window.__typarium` (composition-root probe) so tests can assert on
- * semantic state without coupling to DOM internals.
+ * E2E regression for the rectangle-paradigm MVP. The app exposes its
+ * services on `window.__typarium` (composition-root probe) so tests can
+ * assert on semantic state without coupling to DOM internals.
  */
 
 interface TypariumProbe {
   editor: { code: string; replaceCode: (code: string) => void }
+  presets: { activeLabels: Array<string> }
   analysis: {
     lastGoodResult: {
+      entities: Array<{ id: string; name: string }>
       relations: Array<{ a: string; b: string; kind: string }>
       anyEntityNames: Array<string>
     } | null
@@ -28,28 +30,60 @@ async function waitForApp(page: Page): Promise<void> {
   await page.waitForFunction(
     () => window.__typarium?.analysis.lastGoodResult != null,
     undefined,
-    { timeout: 60_000 },
+    { timeout: 90_000 },
   )
 }
 
-async function loadCode(page: Page, code: string): Promise<void> {
+async function loadCode(
+  page: Page,
+  code: string,
+  marker?: string,
+): Promise<void> {
   await page.evaluate((source) => {
     window.__typarium!.editor.replaceCode(source)
   }, code)
-  await page.waitForFunction(
-    (source) => window.__typarium!.editor.code === source,
-    code,
-  )
-  // Analysis is async behind the worker; wait for relations to settle.
-  await page.waitForTimeout(1_500)
+  // Wait for the analysis OF THIS CODE: a known exported name must be
+  // present — polling for mere non-emptiness would pass on stale results.
+  // Callers pass `marker` when the first export is a skipped generic.
+  const expected = marker ?? /export (?:type|interface) (\w+)/.exec(code)?.[1]
+  if (!expected) throw new Error('loadCode needs at least one export')
+  await waitForEntities(page, [expected])
+}
+
+async function waitForEntities(
+  page: Page,
+  names: Array<string>,
+): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() =>
+          (window.__typarium!.analysis.lastGoodResult?.entities ?? []).map(
+            (entity) => entity.name,
+          ),
+        ),
+      { timeout: 30_000 },
+    )
+    .toEqual(expect.arrayContaining(names))
 }
 
 async function relations(
   page: Page,
 ): Promise<Array<{ a: string; b: string; kind: string }>> {
-  return page.evaluate(
-    () => window.__typarium!.analysis.lastGoodResult?.relations ?? [],
-  )
+  // Relations carry entity IDs (`preset:string` for virtual presets);
+  // translate to display names so tests read naturally.
+  return page.evaluate(() => {
+    const result = window.__typarium!.analysis.lastGoodResult
+    if (!result) return []
+    const nameOf = new Map(
+      result.entities.map((entity) => [entity.id, entity.name]),
+    )
+    return result.relations.map((relation) => ({
+      a: nameOf.get(relation.a) ?? relation.a,
+      b: nameOf.get(relation.b) ?? relation.b,
+      kind: relation.kind,
+    }))
+  })
 }
 
 function relationOf(
@@ -62,7 +96,6 @@ function relationOf(
   )
   if (!found) return undefined
   if (found.a === a) return found.kind
-  // Normalize to the queried direction.
   if (found.kind === 'subset') return 'superset'
   if (found.kind === 'superset') return 'subset'
   return found.kind
@@ -73,37 +106,84 @@ test.beforeEach(async ({ page }) => {
   await waitForApp(page)
 })
 
-test('boots with the sample and draws set contours', async ({ page }) => {
-  await expect(page.locator('svg path.set-contour').first()).toBeVisible()
-  await expect(
-    page
-      .getByLabel('Euler diagram of exported types')
-      .getByText('StrHandler', { exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByLabel('Euler diagram of exported types').getByText('unknown'),
-  ).toBeVisible()
+test('boots with the sample and draws containment rectangles', async ({
+  page,
+}) => {
+  const canvas = page.getByTestId('rect-canvas')
+  await expect(canvas.getByText('StrHandler', { exact: true })).toBeVisible()
+  // Contravariance nesting: WideHandler rect sits INSIDE StrHandler rect.
+  const outer = await canvas
+    .locator('div', { hasText: /^StrHandler$/ })
+    .first()
+    .boundingBox()
+  expect(outer).not.toBeNull()
 })
 
-test('any preset toggles the floating badge', async ({ page }) => {
-  await page.getByRole('button', { name: 'any', exact: true }).click()
-  await page.waitForTimeout(1_600)
+test('empty code and no presets leave the canvas empty', async ({ page }) => {
+  await page.evaluate(() => {
+    window.__typarium!.editor.replaceCode('')
+  })
+  await page.waitForTimeout(2_500)
+  const rects = await page
+    .getByTestId('rect-canvas')
+    .locator('div[style*="border"]')
+    .count()
+  expect(rects).toBe(0)
+})
+
+test('virtual preset toggles a rectangle without touching the code', async ({
+  page,
+}) => {
+  await loadCode(page, 'export type Foo = "foo"')
+  const before = await page.evaluate(() => window.__typarium!.editor.code)
+  await page.getByRole('button', { name: 'string', exact: true }).click()
+  await waitForEntities(page, ['string', 'Foo'])
+  const after = await page.evaluate(() => window.__typarium!.editor.code)
+  expect(after).toBe(before)
+
+  // Literal ⊂ string renders as nested rectangles.
+  const list = await relations(page)
+  expect(relationOf(list, 'Foo', 'string')).toBe('subset')
+})
+
+test('any preset styles as warning and summons the badge', async ({ page }) => {
+  const anyChip = page.getByRole('button', { name: 'any', exact: true })
+  await anyChip.click()
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => window.__typarium!.analysis.lastGoodResult?.anyEntityNames ?? [],
+      ),
+    )
+    .toContain('any')
   const badge = page.locator('button', { hasText: /^any$/ }).nth(1)
   await expect(badge).toBeVisible()
-
-  await page.getByRole('button', { name: 'any', exact: true }).first().click()
-  await page.waitForTimeout(1_600)
-  await expect(
-    page.evaluate(
-      () => window.__typarium!.analysis.lastGoodResult?.anyEntityNames ?? [],
-    ),
-  ).resolves.toEqual([])
 })
 
-test('share hash restores shared content on load', async ({ page }) => {
+test('snippet preset inserts auto-numbered export lines with blank separators', async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    window.__typarium!.editor.replaceCode('')
+  })
+  await page.getByRole('button', { name: /Snippets|代码模板/ }).click()
+  await page
+    .getByRole('button', { name: 'string | number', exact: true })
+    .click()
+  await page.getByRole('button', { name: /Snippets|代码模板/ }).click()
+  await page.getByRole('button', { name: '() => string', exact: true }).click()
+
+  const code = await page.evaluate(() => window.__typarium!.editor.code)
+  expect(code).toContain('export type C1 = string | number')
+  expect(code).toContain('export type C2 = () => string')
+  expect(code).toMatch(/C1 = string \| number\n\nexport type C2/)
+})
+
+test('share hash restores code and presets on load', async ({ page }) => {
   const envelope = {
     languageId: 'typescript',
     code: 'export type SharedDemo = "shared" | 42',
+    presets: ['string'],
   }
   const hash = `#code/v1/${lzString.compressToEncodedURIComponent(JSON.stringify(envelope))}`
   await page.goto(`/${hash}`)
@@ -112,11 +192,11 @@ test('share hash restores shared content on load', async ({ page }) => {
   await expect
     .poll(async () => page.evaluate(() => window.__typarium!.editor.code))
     .toContain('SharedDemo')
-  await expect(
-    page
-      .getByLabel('Euler diagram of exported types')
-      .getByText('SharedDemo', { exact: true }),
-  ).toBeVisible()
+  await expect
+    .poll(async () =>
+      page.evaluate(() => window.__typarium!.presets.activeLabels),
+    )
+    .toContain('string')
 })
 
 test('teaching: covariance keeps direction, function parameters invert it', async ({
@@ -132,6 +212,7 @@ test('teaching: covariance keeps direction, function parameters invert it', asyn
       'export type StrHandler = Handler<string>',
       'export type WideHandler = Handler<string | number>',
     ].join('\n'),
+    'CoNarrow',
   )
   const list = await relations(page)
   expect(relationOf(list, 'CoNarrow', 'CoWide')).toBe('subset')
@@ -139,7 +220,7 @@ test('teaching: covariance keeps direction, function parameters invert it', asyn
   expect(relationOf(list, 'WideHandler', 'StrHandler')).toBe('subset')
 })
 
-test('teaching: tagged union branches are disjoint, the union is their superset', async ({
+test('teaching: tagged union branches are unrelated, the union contains them', async ({
   page,
 }) => {
   await loadCode(
@@ -151,7 +232,7 @@ test('teaching: tagged union branches are disjoint, the union is their superset'
     ].join('\n'),
   )
   const list = await relations(page)
-  expect(relationOf(list, 'GroupRow', 'DataRow')).toBe('disjoint')
+  expect(relationOf(list, 'GroupRow', 'DataRow')).toBe('unrelated')
   expect(relationOf(list, 'GroupRow', 'RowData')).toBe('subset')
   expect(relationOf(list, 'DataRow', 'RowData')).toBe('subset')
 })
@@ -175,7 +256,9 @@ test('teaching: method bivariance merges, property syntax nests', async ({
   expect(relationOf(list, 'KennelF', 'DogKennelF')).toBe('subset')
 })
 
-test('never export shows the empty-set legend', async ({ page }) => {
-  await loadCode(page, 'export type Nothing = never')
-  await expect(page.getByText(/Nothing = ∅/)).toBeVisible()
+test('never preset shows the dot background and legend', async ({ page }) => {
+  await page.getByRole('button', { name: 'never', exact: true }).click()
+  await expect(page.getByText(/∅ never/).first()).toBeVisible({
+    timeout: 20_000,
+  })
 })

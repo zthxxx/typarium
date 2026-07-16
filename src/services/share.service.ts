@@ -6,13 +6,15 @@ import {
 /**
  * Share-URL codec (ADR-0006). Format: `#code/v1/<payload>` where payload
  * is lz-string's URI-safe Base64 variant of the JSON envelope. The
- * version segment lets future envelope changes decode old links.
+ * version segment lets future envelope changes decode old links;
+ * `presets` was added in revision 2 and stays optional for old links.
  */
 const HASH_PREFIX = '#code/v1/'
 
-interface ShareEnvelope {
+export interface ShareEnvelope {
   languageId: string
   code: string
+  presets?: Array<string>
 }
 
 export class ShareService {
@@ -43,21 +45,16 @@ export class ShareService {
 
   /**
    * Copies a share link to the clipboard.
-   * `withContent` embeds the current code; otherwise the bare page URL
-   * is shared and the reader starts from the default sample.
+   * `withContent` embeds the current code and toggled presets; otherwise
+   * the bare page URL is shared.
    */
   async copyShareUrl(options: {
     withContent: boolean
-    languageId: string
-    code: string
+    envelope: ShareEnvelope
   }): Promise<string> {
     const base = `${location.origin}${location.pathname}`
     const url = options.withContent
-      ? base +
-        this.encodeToHash({
-          languageId: options.languageId,
-          code: options.code,
-        })
+      ? base + this.encodeToHash(options.envelope)
       : base
     await navigator.clipboard.writeText(url)
     return url

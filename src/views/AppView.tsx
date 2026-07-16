@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { bootstrapContent, createAppContainer } from '#/services/container.ts'
 import { AnalysisService } from '#/services/analysis.service.ts'
 import { EditorService } from '#/services/editor.service.ts'
+import { PresetService } from '#/services/preset.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { ShareService } from '#/services/share.service.ts'
 import { VisualizationStore } from '#/services/visualization.store.ts'
@@ -10,28 +11,17 @@ import { AnyBadge } from '#/views/canvas/AnyBadge.tsx'
 import { CanvasPane } from '#/views/canvas/CanvasPane.tsx'
 import { AppFooter } from '#/views/chrome/AppFooter.tsx'
 import { AppHeader } from '#/views/chrome/AppHeader.tsx'
+import { EditorDrawer } from '#/views/editor/EditorDrawer.tsx'
 import { ServicesProvider, useService } from '#/views/di.tsx'
-import { MonacoEditor } from '#/views/editor/MonacoEditor.tsx'
 import type { LanguageAdapter } from '#/core/analysis/adapter.ts'
 
 /**
  * Client-side application root: builds the composition root around the
  * language adapter, restores content (share hash > IndexedDB > sample)
- * and lays out the TS-Playground-style split.
+ * and lays out the fluid canvas + editor drawer shell.
  */
 export function AppView({ adapter }: { adapter: LanguageAdapter }) {
-  const container = useMemo(() => {
-    const built = createAppContainer(adapter)
-    built.register(
-      new VisualizationStore(
-        built.get(AnalysisService),
-        built.get(EditorService),
-        adapter.universe,
-      ),
-      VisualizationStore,
-    )
-    return built
-  }, [adapter])
+  const container = useMemo(() => createAppContainer(adapter), [adapter])
 
   useEffect(() => {
     void bootstrapContent(container, adapter)
@@ -39,6 +29,7 @@ export function AppView({ adapter }: { adapter: LanguageAdapter }) {
     ;(window as unknown as Record<string, unknown>).__typarium = {
       analysis: container.get(AnalysisService),
       editor: container.get(EditorService),
+      presets: container.get(PresetService),
       viz: container.get(VisualizationStore),
     }
   }, [container, adapter])
@@ -58,14 +49,18 @@ const AppShell = observer(function AppShell({
   const settings = useService(SettingsService)
   const share = useService(ShareService)
   const editor = useService(EditorService)
+  const presets = useService(PresetService)
   const [toast, setToast] = useState<string | null>(null)
 
   const doShare = (withContent: boolean) => {
     void share
       .copyShareUrl({
         withContent,
-        languageId: adapter.id,
-        code: editor.code,
+        envelope: {
+          languageId: adapter.id,
+          code: editor.code,
+          presets: presets.activeLabels,
+        },
       })
       .then(() => {
         setToast(settings.t('header.shareCopied'))
@@ -87,15 +82,13 @@ const AppShell = observer(function AppShell({
   }, [])
 
   return (
-    <div className="flex h-[100dvh] min-h-[560px] flex-col">
+    <div className="flex h-[100dvh] min-h-[480px] flex-col">
       <AppHeader languageLabel={adapter.label} onShare={doShare} />
-      <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,58fr)_minmax(0,42fr)]">
-        <section className="min-h-[45dvh] min-w-0 border-b-2 border-(--color-line) lg:border-r-2 lg:border-b-0">
-          <CanvasPane presets={adapter.presets} />
+      <main className="relative flex min-h-0 flex-1">
+        <section className="min-h-0 min-w-0 flex-1">
+          <CanvasPane />
         </section>
-        <section className="min-h-[40dvh] min-w-0 bg-(--color-board)">
-          <MonacoEditor />
-        </section>
+        <EditorDrawer />
       </main>
       <AppFooter engineLabel={adapter.engineLabel} />
       <AnyBadge />
