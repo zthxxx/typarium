@@ -1,5 +1,10 @@
 import { makeAutoObservable, runInAction } from 'mobx'
-import type { LanguageAdapter, VirtualType } from '#/core/analysis/adapter.ts'
+import type {
+  CompletionPreferences,
+  FormatOptions,
+  LanguageAdapter,
+  VirtualType,
+} from '#/core/analysis/adapter.ts'
 import type {
   AnalysisResult,
   SourceDiagnostic,
@@ -41,8 +46,16 @@ export class AnalysisService {
     return this.adapter.quickInfo(source, offset)
   }
 
-  completions(source: string, offset: number) {
-    return this.adapter.completions(source, offset)
+  completions(
+    source: string,
+    offset: number,
+    preferences?: CompletionPreferences,
+  ) {
+    return this.adapter.completions(source, offset, preferences)
+  }
+
+  format(source: string, options: FormatOptions): Promise<string> {
+    return this.adapter.format(source, options)
   }
 
   async analyze(

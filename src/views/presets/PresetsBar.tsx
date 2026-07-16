@@ -1,38 +1,21 @@
 import { observer } from 'mobx-react-lite'
-import { useEffect, useRef, useState } from 'react'
 import { PresetService } from '#/services/preset.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { useService } from '#/views/di.tsx'
 import type { LanguagePreset } from '#/core/analysis/adapter.ts'
 
 /**
- * Preset picker (product rules, revision 2):
- * - virtual presets (primitive / intrinsic / common) are ALWAYS visible,
- *   wrapping to multiple rows — never hidden behind an overlay
- * - snippet presets (long code templates) live in a popover
- * - catalog order is the display order; categories are not visually
- *   grouped
- * - `any` always carries the warning tint, active or not
+ * Preset picker: virtual presets (primitive / intrinsic / common) are
+ * ALWAYS visible, wrapping to multiple rows — never hidden behind an
+ * overlay. Catalog order is the display order; categories carry no
+ * visual grouping. `any` always wears the warning tint. Snippet
+ * templates live in the editor toolbar (EditorToolbar), not here.
  */
 export const PresetsBar = observer(function PresetsBar() {
   const presets = useService(PresetService)
   const settings = useService(SettingsService)
-  const [snippetsOpen, setSnippetsOpen] = useState(false)
-  const popoverRef = useRef<HTMLDivElement>(null)
 
   const virtual = presets.catalog.filter((preset) => preset.kind === 'virtual')
-  const snippets = presets.catalog.filter((preset) => preset.kind === 'snippet')
-
-  useEffect(() => {
-    if (!snippetsOpen) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!popoverRef.current?.contains(event.target as Node)) {
-        setSnippetsOpen(false)
-      }
-    }
-    window.addEventListener('pointerdown', onPointerDown)
-    return () => window.removeEventListener('pointerdown', onPointerDown)
-  }, [snippetsOpen])
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-1">
@@ -47,39 +30,6 @@ export const PresetsBar = observer(function PresetsBar() {
           onClick={() => presets.toggle(preset)}
         />
       ))}
-      <div ref={popoverRef} className="relative">
-        <button
-          type="button"
-          aria-expanded={snippetsOpen}
-          className="rounded-none border-2 border-dashed border-(--color-ink-soft) bg-white/70 px-3 py-1 font-mono text-xs font-bold text-(--color-ink-soft) transition-[transform,color,border-color] hover:border-(--color-brand) hover:text-(--color-brand) active:scale-[0.95]"
-          onClick={() => setSnippetsOpen((open) => !open)}
-        >
-          {settings.t('presets.snippets')} {snippetsOpen ? '▴' : '▾'}
-        </button>
-        {snippetsOpen ? (
-          <div className="absolute top-full left-0 z-40 mt-2 flex w-max max-w-[80vw] flex-col gap-1 rounded-xl border-2 border-(--color-ink) bg-white p-2 shadow-(--shadow-sticker)">
-            {snippets.map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                className="rounded-lg px-2.5 py-1 text-left font-mono text-xs whitespace-nowrap hover:bg-(--color-paper)"
-                onClick={() => {
-                  presets.toggle(preset)
-                  setSnippetsOpen(false)
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  className="mr-1.5 text-(--color-ink-soft)"
-                >
-                  +
-                </span>
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
     </div>
   )
 })

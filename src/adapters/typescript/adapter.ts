@@ -49,7 +49,9 @@ export function createTypescriptAdapter(): LanguageAdapter {
     analyze: (source, virtualTypes) => remote.analyze(source, virtualTypes),
     check: (source) => remote.check(source),
     quickInfo: (source, offset) => remote.quickInfo(source, offset),
-    completions: (source, offset) => remote.completions(source, offset),
+    completions: (source, offset, preferences) =>
+      remote.completions(source, offset, preferences),
+    format: (source, options) => remote.format(source, options),
     dispose: () => worker.terminate(),
   }
 }

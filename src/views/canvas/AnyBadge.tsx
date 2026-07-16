@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
 import { VisualizationStore } from '#/services/visualization.store.ts'
+import { Popup } from '#/views/floating/Popup.tsx'
 import { useService } from '#/views/di.tsx'
 
 /**
@@ -117,28 +118,30 @@ export const AnyBadge = observer(function AnyBadge() {
       </span>
 
       {showTip ? (
-        <span className="absolute top-full left-1/2 mt-4 block w-72 -translate-x-1/2 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-[4px_4px_0_rgba(27,39,51,0.18)]">
-          <span className="mb-1 block">{settings.t('anyBadge.tooltip')}</span>
-          <ul className="flex flex-col gap-1">
-            {anyEntities.map((entity) => (
-              <li
-                key={entity.id}
-                className="flex items-baseline gap-2 font-mono"
-              >
-                <span
-                  aria-hidden="true"
-                  className="h-2.5 w-2.5 shrink-0 self-center rounded-[4px] border-2 border-(--color-warn-any) bg-(--color-warn-any)/15"
-                />
-                <span className="font-bold">{entity.name}</span>
-                {entity.typeText !== entity.name ? (
-                  <span className="max-w-40 truncate text-(--color-ink-soft)">
-                    {entity.typeText}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </span>
+        <Popup anchor={badgeRef} placement="bottom" distance={12}>
+          <span className="block w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-(--shadow-sticker)">
+            <span className="mb-1 block">{settings.t('anyBadge.tooltip')}</span>
+            <ul className="flex flex-col gap-1">
+              {anyEntities.map((entity) => (
+                <li
+                  key={entity.id}
+                  className="flex items-baseline gap-2 font-mono"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-2.5 w-2.5 shrink-0 self-center rounded-[4px] border-2 border-(--color-warn-any) bg-(--color-warn-any)/15"
+                  />
+                  <span className="font-bold">{entity.name}</span>
+                  {entity.typeText !== entity.name ? (
+                    <span className="max-w-40 truncate text-(--color-ink-soft)">
+                      {entity.typeText}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </span>
+        </Popup>
       ) : null}
     </button>
   )

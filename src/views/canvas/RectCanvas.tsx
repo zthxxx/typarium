@@ -4,7 +4,9 @@ import { SettingsService } from '#/services/settings.service.ts'
 import { VisualizationStore } from '#/services/visualization.store.ts'
 import { useService } from '#/views/di.tsx'
 import { RING_INSET } from '#/core/layout/constants.ts'
+import { Popup } from '#/views/floating/Popup.tsx'
 import type { EntityRect } from '#/core/layout/types.ts'
+import type { RefObject } from 'react'
 import type { TooltipStack } from '#/services/visualization.store.ts'
 
 const HUE_COUNT = 12
@@ -107,7 +109,7 @@ export const RectCanvas = observer(function RectCanvas() {
               .filter((entity) => entity.origin === 'code')
               .map((entity) => entity.name),
           ].join(' ≡ ')}
-          hostWidth={viz.viewportWidth}
+          hostRef={hostRef}
         />
       ) : null}
     </div>
@@ -176,60 +178,63 @@ const RectView = observer(function RectView({
   )
 })
 
-/** Multi-item containment tooltip: outermost set first, ∅ row last. */
+/** Multi-item containment tooltip: outermost set first, ∅ row last.
+ * Anchored to the pointer as a floating-ui virtual reference — the
+ * viewport clipping keeps it on screen near window edges. */
 function StackTooltip({
   pointer,
   stack,
   neverRow,
-  hostWidth,
+  hostRef,
 }: {
   pointer: { x: number; y: number }
   stack: TooltipStack
   neverRow: string
-  hostWidth: number
+  hostRef: RefObject<HTMLDivElement | null>
 }) {
-  const flipX = pointer.x > hostWidth - 280
+  const host = hostRef.current?.getBoundingClientRect()
+  const reference = {
+    x: (host?.left ?? 0) + pointer.x,
+    y: (host?.top ?? 0) + pointer.y,
+    width: 0,
+    height: 0,
+  }
   return (
-    <div
-      className="pointer-events-none absolute z-30 min-w-44 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 shadow-(--shadow-sticker)"
-      style={{
-        left: flipX ? undefined : pointer.x + 16,
-        right: flipX ? hostWidth - pointer.x + 16 : undefined,
-        top: pointer.y + 16,
-      }}
-    >
-      <ul className="flex flex-col gap-1">
-        {stack.items.map((item, index) => (
-          <li
-            key={`${item.name}-${index}`}
-            className="flex items-baseline gap-2 font-mono text-xs"
-          >
-            <span
-              className="h-2.5 w-2.5 shrink-0 self-center rounded-[4px] border-2"
-              style={
-                item.colorIndex === null
-                  ? { borderColor: 'var(--color-brand)' }
-                  : {
-                      borderColor: `var(--set-hue-${item.colorIndex % HUE_COUNT}-stroke)`,
-                      background: `var(--set-hue-${item.colorIndex % HUE_COUNT}-fill)`,
-                    }
-              }
-            />
-            <span className="font-bold">{item.name}</span>
-            {item.typeText !== item.name ? (
-              <span className="max-w-56 truncate text-(--color-ink-soft)">
-                {item.typeText}
-              </span>
-            ) : null}
-          </li>
-        ))}
-        {stack.onNever ? (
-          <li className="font-mono text-xs text-(--color-ink-soft)">
-            {neverRow}
-          </li>
-        ) : null}
-      </ul>
-    </div>
+    <Popup anchor={reference} placement="bottom-start" distance={14}>
+      <div className="pointer-events-none min-w-44 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 shadow-(--shadow-sticker)">
+        <ul className="flex flex-col gap-1">
+          {stack.items.map((item, index) => (
+            <li
+              key={`${item.name}-${index}`}
+              className="flex items-baseline gap-2 font-mono text-xs"
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 self-center rounded-[4px] border-2"
+                style={
+                  item.colorIndex === null
+                    ? { borderColor: 'var(--color-brand)' }
+                    : {
+                        borderColor: `var(--set-hue-${item.colorIndex % HUE_COUNT}-stroke)`,
+                        background: `var(--set-hue-${item.colorIndex % HUE_COUNT}-fill)`,
+                      }
+                }
+              />
+              <span className="font-bold">{item.name}</span>
+              {item.typeText !== item.name ? (
+                <span className="max-w-56 truncate text-(--color-ink-soft)">
+                  {item.typeText}
+                </span>
+              ) : null}
+            </li>
+          ))}
+          {stack.onNever ? (
+            <li className="font-mono text-xs text-(--color-ink-soft)">
+              {neverRow}
+            </li>
+          ) : null}
+        </ul>
+      </div>
+    </Popup>
   )
 }
 
@@ -241,11 +246,13 @@ function StackTooltip({
 const NeverLegend = observer(function NeverLegend() {
   const viz = useService(VisualizationStore)
   const settings = useService(SettingsService)
+  const pillRef = useRef<HTMLSpanElement>(null)
   const [hovered, setHovered] = useState(false)
   const resolved = viz.neverEntities
 
   return (
     <span
+      ref={pillRef}
       className="absolute bottom-3 left-4 z-10 rounded-full bg-white px-3 py-1 font-mono text-[11px] font-semibold transition-colors"
       style={{
         color: hovered ? 'var(--color-ink)' : 'var(--color-ink-soft)',
@@ -271,21 +278,23 @@ const NeverLegend = observer(function NeverLegend() {
       </svg>
       {settings.t('canvas.neverLegend')}
       {hovered && resolved.length > 0 ? (
-        <span className="absolute bottom-full left-0 mb-2 block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-normal shadow-(--shadow-sticker)">
-          <ul className="flex flex-col gap-1">
-            {resolved.map((entity) => (
-              <li key={entity.id} className="flex items-baseline gap-2">
-                <span className="text-(--color-ink-soft)">∅</span>
-                <span className="font-bold">{entity.name}</span>
-                {entity.typeText !== entity.name ? (
-                  <span className="max-w-44 truncate text-(--color-ink-soft)">
-                    {entity.typeText}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </span>
+        <Popup anchor={pillRef} placement="top-start" distance={8}>
+          <span className="block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-mono text-[11px] shadow-(--shadow-sticker)">
+            <ul className="flex flex-col gap-1">
+              {resolved.map((entity) => (
+                <li key={entity.id} className="flex items-baseline gap-2">
+                  <span className="text-(--color-ink-soft)">∅</span>
+                  <span className="font-bold">{entity.name}</span>
+                  {entity.typeText !== entity.name ? (
+                    <span className="max-w-44 truncate text-(--color-ink-soft)">
+                      {entity.typeText}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </span>
+        </Popup>
       ) : null}
     </span>
   )

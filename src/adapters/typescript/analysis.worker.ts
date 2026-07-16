@@ -1,7 +1,11 @@
 import { expose } from 'comlink'
 import { createTsAnalyzer } from '#/adapters/typescript/analyzer/index.ts'
 import type { TsAnalyzer } from '#/adapters/typescript/analyzer/index.ts'
-import type { VirtualType } from '#/core/analysis/adapter.ts'
+import type {
+  VirtualType,
+  CompletionPreferences,
+  FormatOptions,
+} from '#/core/analysis/adapter.ts'
 
 /**
  * Web Worker hosting the single TypeScript implementation (ADR-0015):
@@ -40,8 +44,29 @@ const api = {
   async quickInfo(source: string, offset: number) {
     return (await getAnalyzer()).quickInfo(source, offset)
   },
-  async completions(source: string, offset: number) {
-    return (await getAnalyzer()).completions(source, offset)
+  async completions(
+    source: string,
+    offset: number,
+    preferences?: CompletionPreferences,
+  ) {
+    return (await getAnalyzer()).completions(source, offset, preferences)
+  },
+  async format(source: string, options: FormatOptions): Promise<string> {
+    // Prettier standalone: the formatter matches the editor-config
+    // style knobs one for one (quotes / semi / trailing comma / width).
+    const [{ format }, tsPlugin, estreePlugin] = await Promise.all([
+      import('prettier/standalone'),
+      import('prettier/plugins/typescript'),
+      import('prettier/plugins/estree'),
+    ])
+    return format(source, {
+      parser: 'typescript',
+      plugins: [tsPlugin.default, estreePlugin.default],
+      singleQuote: options.singleQuote,
+      semi: options.semi,
+      trailingComma: options.trailingComma ? 'all' : 'none',
+      printWidth: options.printWidth,
+    })
   },
 }
 

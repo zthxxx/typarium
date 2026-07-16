@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { useRef } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
 import { UiService } from '#/services/ui.service.ts'
+import { EditorToolbar } from '#/views/editor/EditorToolbar.tsx'
 import { MonacoEditor } from '#/views/editor/MonacoEditor.tsx'
 import { useService } from '#/views/di.tsx'
 
@@ -39,7 +40,12 @@ export const EditorDrawer = observer(function EditorDrawer() {
           }}
           aria-hidden={!ui.editorOpen}
         >
-          <MonacoEditor />
+          <div className="flex h-9 shrink-0 items-center justify-end border-b-2 border-(--color-line) bg-white px-2">
+            <EditorToolbar />
+          </div>
+          <div className="h-[calc(100%-36px)]">
+            <MonacoEditor />
+          </div>
         </aside>
       </>
     )
@@ -83,9 +89,12 @@ export const EditorDrawer = observer(function EditorDrawer() {
         <div className="mx-auto h-full w-[3px] bg-(--color-line) transition-colors group-hover:bg-(--color-brand)" />
       </div>
       <div className="flex min-h-0 w-full flex-col border-l-2 border-(--color-line) bg-(--color-board)">
-        <div className="flex h-8 shrink-0 items-center justify-between border-b-2 border-(--color-line) bg-white px-3">
+        <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b-2 border-(--color-line) bg-white px-3">
           <span className="font-mono text-xs font-bold text-(--color-ink-soft)">
             {settings.t('editor.title')}
+          </span>
+          <span className="ml-auto flex items-center gap-1.5">
+            <EditorToolbar />
           </span>
           <button
             type="button"

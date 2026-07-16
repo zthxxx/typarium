@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { LanguageIcon } from '@heroicons/react/20/solid'
 import { useEffect, useRef, useState } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
+import { Popup } from '#/views/floating/Popup.tsx'
 import { useService } from '#/views/di.tsx'
 
 /**
@@ -57,30 +58,32 @@ export const AppHeader = observer(function AppHeader({
             </span>
           </button>
           {localeOpen ? (
-            <div className="absolute top-full right-0 z-30 mt-2 w-28 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-(--shadow-sticker)">
-              {(
-                [
-                  ['zh', '中文'],
-                  ['en', 'English'],
-                ] as const
-              ).map(([locale, label]) => (
-                <button
-                  key={locale}
-                  type="button"
-                  className={
-                    settings.locale === locale
-                      ? 'block w-full bg-(--color-paper) px-3 py-2 text-left font-mono text-xs font-bold text-(--color-brand)'
-                      : 'block w-full px-3 py-2 text-left font-mono text-xs hover:bg-(--color-paper)'
-                  }
-                  onClick={() => {
-                    settings.setLocale(locale)
-                    setLocaleOpen(false)
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <Popup anchor={localeRef} placement="bottom-end" distance={8}>
+              <div className="w-28 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-(--shadow-sticker)">
+                {(
+                  [
+                    ['zh', '中文'],
+                    ['en', 'English'],
+                  ] as const
+                ).map(([locale, label]) => (
+                  <button
+                    key={locale}
+                    type="button"
+                    className={
+                      settings.locale === locale
+                        ? 'block w-full bg-(--color-paper) px-3 py-2 text-left font-mono text-xs font-bold text-(--color-brand)'
+                        : 'block w-full px-3 py-2 text-left font-mono text-xs hover:bg-(--color-paper)'
+                    }
+                    onClick={() => {
+                      settings.setLocale(locale)
+                      setLocaleOpen(false)
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </Popup>
           ) : null}
         </div>
 

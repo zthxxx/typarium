@@ -3,6 +3,24 @@ import { dictionaries, formatMessage } from '#/i18n/messages.ts'
 import type { Locale, MessageKey } from '#/i18n/messages.ts'
 
 const LOCALE_STORAGE_KEY = 'typarium.locale'
+const EDITOR_CONFIG_KEY = 'typarium.editorConfig'
+
+/** Editor style knobs: formatter output AND completion suggestions. */
+export interface EditorConfig {
+  wordWrap: boolean
+  singleQuote: boolean
+  semi: boolean
+  trailingComma: boolean
+  printWidth: number
+}
+
+const DEFAULT_EDITOR_CONFIG: EditorConfig = {
+  wordWrap: false,
+  singleQuote: true,
+  semi: false,
+  trailingComma: true,
+  printWidth: 52,
+}
 
 /**
  * User preferences. Locale is a personal setting: persisted in
@@ -11,10 +29,21 @@ const LOCALE_STORAGE_KEY = 'typarium.locale'
  */
 export class SettingsService {
   locale: Locale
+  editorConfig: EditorConfig
 
   constructor() {
     this.locale = detectInitialLocale()
+    this.editorConfig = loadEditorConfig()
     makeAutoObservable(this)
+  }
+
+  updateEditorConfig(patch: Partial<EditorConfig>): void {
+    this.editorConfig = { ...this.editorConfig, ...patch }
+    try {
+      localStorage.setItem(EDITOR_CONFIG_KEY, JSON.stringify(this.editorConfig))
+    } catch {
+      // Best-effort persistence only.
+    }
   }
 
   setLocale(locale: Locale): void {
@@ -42,4 +71,17 @@ function detectInitialLocale(): Locale {
     // fall through to browser detection
   }
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+}
+
+function loadEditorConfig(): EditorConfig {
+  if (typeof window === 'undefined') return { ...DEFAULT_EDITOR_CONFIG }
+  try {
+    const stored = localStorage.getItem(EDITOR_CONFIG_KEY)
+    if (stored) {
+      return { ...DEFAULT_EDITOR_CONFIG, ...(JSON.parse(stored) as object) }
+    }
+  } catch {
+    // Corrupt storage falls back to defaults.
+  }
+  return { ...DEFAULT_EDITOR_CONFIG }
 }

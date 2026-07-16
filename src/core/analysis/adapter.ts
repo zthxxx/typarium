@@ -42,8 +42,23 @@ export interface LanguageAdapter {
   completions: (
     source: string,
     offset: number,
+    preferences?: CompletionPreferences,
   ) => Promise<Array<CompletionEntry>>
+  /** Format the whole document per the user's style options. */
+  format: (source: string, options: FormatOptions) => Promise<string>
   dispose: () => void
+}
+
+/** Style knobs shared by the formatter and completion suggestions. */
+export interface FormatOptions {
+  singleQuote: boolean
+  semi: boolean
+  trailingComma: boolean
+  printWidth: number
+}
+
+export interface CompletionPreferences {
+  quotePreference: 'single' | 'double'
 }
 
 /** Minimal completion surface the editor needs (kind maps to icons). */

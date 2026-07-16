@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx'
-import type { VirtualType } from '#/core/analysis/adapter.ts'
+import type { FormatOptions, VirtualType } from '#/core/analysis/adapter.ts'
 import type { SourceDiagnostic } from '#/core/set-model/types.ts'
 import type { AnalysisService } from '#/services/analysis.service.ts'
 import type { PersistenceService } from '#/services/persistence.service.ts'
@@ -85,6 +85,24 @@ export class EditorService {
     this.scheduleSave()
     this.scheduleCheck()
     void this.analysis.analyze(this.code, this.virtualTypesGetter())
+  }
+
+  /** Format the whole document with the user's style options. */
+  async formatDocument(options: FormatOptions): Promise<void> {
+    // Spread into a plain object: callers pass mobx observables, and
+    // an observable proxy cannot be structured-cloned into the worker.
+    const plain: FormatOptions = {
+      singleQuote: options.singleQuote,
+      semi: options.semi,
+      trailingComma: options.trailingComma,
+      printWidth: options.printWidth,
+    }
+    try {
+      const formatted = await this.analysis.format(this.code, plain)
+      if (formatted !== this.code) this.replaceCode(formatted)
+    } catch {
+      // Unformattable (syntax errors): leave the code untouched.
+    }
   }
 
   /**

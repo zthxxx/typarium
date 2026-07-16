@@ -88,6 +88,11 @@ export const MonacoEditor = observer(function MonacoEditor() {
             const entries = await analysis.completions(
               completionModel.getValue(),
               completionModel.getOffsetAt(position),
+              {
+                quotePreference: settings.editorConfig.singleQuote
+                  ? 'single'
+                  : 'double',
+              },
             )
             const word = completionModel.getWordUntilPosition(position)
             const range = {
@@ -133,6 +138,14 @@ export const MonacoEditor = observer(function MonacoEditor() {
     model.setValue(editorService.code)
     suppressChangeRef.current = false
   }, [editorService.code])
+
+  // Editor config: word wrap follows the settings popover live.
+  useEffect(() => {
+    return autorun(() => {
+      const wordWrap = settings.editorConfig.wordWrap
+      editorRef.current?.updateOptions({ wordWrap: wordWrap ? 'on' : 'off' })
+    })
+  }, [settings])
 
   // Diagnostics markers: the fast check pass streams into monaco.
   useEffect(() => {

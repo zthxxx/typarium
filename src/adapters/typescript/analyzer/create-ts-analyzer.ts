@@ -6,7 +6,11 @@ import {
 import type { VirtualTypeScriptEnvironment } from '@typescript/vfs'
 
 import { scanExports } from '#/adapters/typescript/analyzer/scan-exports.ts'
-import type { CompletionEntry, VirtualType } from '#/core/analysis/adapter.ts'
+import type {
+  CompletionEntry,
+  CompletionPreferences,
+  VirtualType,
+} from '#/core/analysis/adapter.ts'
 import type {
   AnalysisResult,
   PairRelation,
@@ -36,7 +40,11 @@ export interface TsAnalyzer {
   analyze: (source: string, virtualTypes: Array<VirtualType>) => AnalysisResult
   check: (source: string) => Array<SourceDiagnostic>
   quickInfo: (source: string, offset: number) => string | null
-  completions: (source: string, offset: number) => Array<CompletionEntry>
+  completions: (
+    source: string,
+    offset: number,
+    preferences?: CompletionPreferences,
+  ) => Array<CompletionEntry>
   dispose: () => void
 }
 
@@ -386,12 +394,15 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
   const completions = (
     source: string,
     offset: number,
+    preferences?: CompletionPreferences,
   ): Array<CompletionEntry> => {
     setFile(MAIN_FILE, source)
     const result = env.languageService.getCompletionsAtPosition(
       MAIN_FILE,
       offset,
-      undefined,
+      preferences
+        ? { quotePreference: preferences.quotePreference }
+        : undefined,
     )
     if (!result) return []
     // Filter by the typed prefix BEFORE capping — a blind cap of the
