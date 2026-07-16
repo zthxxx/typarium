@@ -98,12 +98,27 @@ export const RectCanvas = observer(function RectCanvas() {
             top: placeholder.box.y,
             width: placeholder.box.width,
             height: placeholder.box.height,
-            // Half the weight of entity borders: this block is a hint,
-            // not a set — fixed light gray, never from the palette.
-            border: '2px dashed rgba(100, 106, 115, 0.55)',
             background: 'rgba(143, 149, 158, 0.08)',
           }}
         >
+          {/* SVG stroke instead of CSS dashed: dash gap is tunable —
+              product rule wants twice the default spacing. */}
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          >
+            <rect
+              x="1"
+              y="1"
+              width="calc(100% - 2px)"
+              height="calc(100% - 2px)"
+              rx="11"
+              fill="none"
+              stroke="rgba(100, 106, 115, 0.55)"
+              strokeWidth="2"
+              strokeDasharray="8 12"
+            />
+          </svg>
           <span
             className="absolute top-1 left-2.5 text-sm font-bold"
             style={{ color: 'rgba(100, 106, 115, 0.75)' }}
