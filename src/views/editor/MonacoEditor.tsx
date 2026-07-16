@@ -185,11 +185,11 @@ export const MonacoEditor = observer(function MonacoEditor() {
     })
   }, [editorService])
 
-  // Twoslash `// ^?` queries render as end-of-line ghost text, the
-  // TS-Playground behavior. Runs on the checked code (350ms debounce)
-  // and only when a query marker is present. Uses a decorations
-  // collection — editor.deltaDecorations is a deprecated no-op in
-  // monaco 0.55.
+  // Twoslash `// ^?` queries render as ghost text right after the `^?`
+  // marker on its own comment line, the TS-Playground behavior. Runs on
+  // the checked code (350ms debounce) and only when a query marker is
+  // present. Uses a decorations collection — editor.deltaDecorations is
+  // a deprecated no-op in monaco 0.55.
   const twoslashCollection =
     useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
   useEffect(() => {
@@ -213,11 +213,25 @@ export const MonacoEditor = observer(function MonacoEditor() {
           if (!currentModel || currentModel.getValue() !== code) return
           twoslashCollection.current?.set(
             queries.map((query) => {
-              const lineNumber = Math.min(
-                query.line + 1,
+              // query.line is the 0-based TARGET line; the `^?` marker
+              // sits on the comment line right below it. Anchor the
+              // ghost just after the marker; if the marker line moved
+              // mid-edit, fall back to the end of the target line.
+              const markerLine = Math.min(
+                query.line + 2,
                 currentModel.getLineCount(),
               )
-              const column = currentModel.getLineMaxColumn(lineNumber)
+              const markerIndex = currentModel
+                .getLineContent(markerLine)
+                .indexOf('^?')
+              const lineNumber =
+                markerIndex >= 0
+                  ? markerLine
+                  : Math.min(query.line + 1, currentModel.getLineCount())
+              const column =
+                markerIndex >= 0
+                  ? markerIndex + 3
+                  : currentModel.getLineMaxColumn(lineNumber)
               return {
                 range: new monaco.Range(lineNumber, column, lineNumber, column),
                 options: {

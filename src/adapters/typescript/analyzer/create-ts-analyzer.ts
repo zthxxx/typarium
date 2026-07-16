@@ -520,8 +520,16 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       compilerOptions: COMPILER_OPTIONS,
     })
     try {
+      // keepNotations leaves `// ^?` lines in place so query positions
+      // stay in ORIGINAL source coordinates — by default twoslash strips
+      // notation lines and reports lines in the stripped output, which
+      // shifts every query below the first marker.
       const result = twoslasher(source, 'ts', {
-        handbookOptions: { noErrorValidation: true, noErrors: true },
+        handbookOptions: {
+          noErrorValidation: true,
+          noErrors: true,
+          keepNotations: true,
+        },
       })
       return result.queries
         .filter(
