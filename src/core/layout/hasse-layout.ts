@@ -72,7 +72,7 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
           orderIndex: order.get(universeEntities[0].id) ?? 0,
         }
       : null
-  const allClasses = universeClass ? [universeClass, ...classes] : classes
+  const allClassesRaw = universeClass ? [universeClass, ...classes] : classes
   if (universeClass) {
     parentsOf.set(universeClass, [])
     for (const cls of classes) {
@@ -81,6 +81,23 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
       }
     }
   }
+
+  // Isolated singletons — no containment edge in either direction —
+  // leave the layered flow entirely: packing them into layer 0 widens
+  // the top row and skews the connected diagram (product feedback).
+  // They render as a compact grid tucked into the top-right corner.
+  const hasChildOf = new Set<EntityClass>()
+  for (const cls of allClassesRaw) {
+    for (const parent of parentsOf.get(cls) ?? []) hasChildOf.add(parent)
+  }
+  const isolated = allClassesRaw.filter(
+    (cls) =>
+      cls !== universeClass &&
+      (parentsOf.get(cls) ?? []).length === 0 &&
+      !hasChildOf.has(cls),
+  )
+  const isolatedSet = new Set(isolated)
+  const allClasses = allClassesRaw.filter((cls) => !isolatedSet.has(cls))
 
   // Kahn-style layering: layer(v) = longest path from a root. Tolerates
   // malformed cycles by dumping unprocessed nodes into a final layer.
@@ -168,7 +185,35 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
   // pass orders each layer under the mean x of its parents.
   const width = Math.max(MIN_VIEWPORT.width, input.viewport.width)
   const height = Math.max(MIN_VIEWPORT.height, input.viewport.height)
-  const layerCount = Math.max(...planned.map((node) => node.layer)) + 1
+
+  // Isolated cluster geometry (computed first so the layered diagram
+  // can center within the remaining width).
+  const isolatedSorted = [...isolated].sort(
+    (a, b) => a.orderIndex - b.orderIndex,
+  )
+  const isolatedWidths = isolatedSorted.map((cls) =>
+    Math.min(
+      Math.max(
+        72,
+        cls.members.map((m) => m.name).join(' ≡ ').length * 8.5 + 24,
+      ),
+      Math.floor(width / 4),
+    ),
+  )
+  const isolatedColWidth = Math.max(0, ...isolatedWidths)
+  const isolatedCols = isolatedSorted.length > 5 ? 2 : 1
+  const isolatedRegionWidth =
+    isolatedSorted.length > 0
+      ? isolatedCols * isolatedColWidth +
+        (isolatedCols - 1) * HASSE_NODE_GAP +
+        CANVAS_PAD
+      : 0
+  const hasLayered = planned.length > 0
+  const mainWidth = hasLayered ? width - isolatedRegionWidth : width
+
+  const layerCount = hasLayered
+    ? Math.max(...planned.map((node) => node.layer)) + 1
+    : 0
   const availableHeight = height - CANVAS_PAD * 2 - HASSE_NODE_HEIGHT
   const layerStep =
     layerCount <= 1
@@ -183,7 +228,10 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
   const nodeWidth = (labels: Array<string>, kind: string): number => {
     if (kind === 'placeholder') return 64
     const text = labels.join(' ≡ ')
-    return Math.min(Math.max(72, text.length * 8.5 + 24), Math.floor(width / 3))
+    return Math.min(
+      Math.max(72, text.length * 8.5 + 24),
+      Math.floor(mainWidth / 3),
+    )
   }
 
   const boxOf = new Map<string, Box>()
@@ -214,7 +262,7 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
     let totalWidth =
       widths.reduce((sum, w) => sum + w, 0) +
       HASSE_NODE_GAP * (widths.length - 1)
-    const available = width - CANVAS_PAD * 2
+    const available = mainWidth - CANVAS_PAD * 2
     if (totalWidth > available) {
       const scale = Math.max(
         0.35,
@@ -230,7 +278,7 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
       )
     }
 
-    let x = Math.max(CANVAS_PAD, (width - totalWidth) / 2)
+    let x = Math.max(CANVAS_PAD, (mainWidth - totalWidth) / 2)
     const y = topY + currentLayer * layerStep
     scored.forEach(({ node }, index) => {
       const box: Box = {
@@ -250,6 +298,41 @@ export function computeHasseLayout(input: RectLayoutInput): HasseLayoutResult {
         layer: node.layer,
       })
       x += widths[index] + HASSE_NODE_GAP
+    })
+  }
+
+  // Isolated cluster: compact wrap grid, top-right, declaration order.
+  if (isolatedSorted.length > 0) {
+    const gridLeft = hasLayered
+      ? width - CANVAS_PAD - (isolatedRegionWidth - CANVAS_PAD)
+      : Math.max(
+          CANVAS_PAD,
+          (width -
+            (isolatedCols * isolatedColWidth +
+              (isolatedCols - 1) * HASSE_NODE_GAP)) /
+            2,
+        )
+    const gridTop = CANVAS_PAD + 8
+    isolatedSorted.forEach((cls, index) => {
+      const col = index % isolatedCols
+      const row = Math.floor(index / isolatedCols)
+      const box: Box = {
+        x: gridLeft + col * (isolatedColWidth + HASSE_NODE_GAP),
+        y: gridTop + row * (HASSE_NODE_HEIGHT + 10),
+        width: isolatedWidths[index],
+        height: HASSE_NODE_HEIGHT,
+      }
+      const key = classKey(cls)
+      boxOf.set(key, box)
+      nodes.push({
+        key,
+        entityIds: cls.members.map((member) => member.id),
+        labels: cls.members.map((member) => member.name),
+        kind: 'entity',
+        box,
+        colorIndex: cls.orderIndex % 12,
+        layer: 0,
+      })
     })
   }
 

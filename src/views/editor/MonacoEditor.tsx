@@ -62,6 +62,9 @@ export const MonacoEditor = observer(function MonacoEditor() {
       // lights up its rectangle on the canvas; leaving the editor
       // restores every rectangle to full strength.
       editor.onDidChangeCursorPosition((event) => {
+        // Programmatic setValue also moves the cursor; only a focused
+        // editor expresses user intent worth highlighting.
+        if (!editor.hasTextFocus()) return
         viz.setCursorOffset(model.getOffsetAt(event.position))
       })
       editor.onDidBlurEditorWidget(() => {
