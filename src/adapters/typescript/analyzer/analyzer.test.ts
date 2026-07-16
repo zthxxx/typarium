@@ -172,7 +172,57 @@ describe('ts analyzer', () => {
     expect(result.entities).toEqual([])
     expect(result.relations).toEqual([])
     expect(
-      result.diagnostics.some((diagnostic) => diagnostic.severity === 'error'),
+      result.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.severity === 'error' && diagnostic.domain === 'type',
+      ),
+    ).toBe(true)
+  })
+
+  test('value-space errors do not block: exported types still analyzed', () => {
+    const result = analyzer.analyze(
+      [
+        'export type A2 = string',
+        'export type B2 = string | number',
+        'declare let a2: A2',
+        'declare let b2: B2',
+        'a2 = b2',
+        'a2 = 1',
+        "a2.concat('')",
+      ].join('\n'),
+      [],
+    )
+    expect(result.entities.map((entity) => entity.id)).toEqual(['A2', 'B2'])
+    expect(relationOf(result, 'A2', 'B2')).toBe('subset')
+    const errors = result.diagnostics.filter(
+      (diagnostic) => diagnostic.severity === 'error',
+    )
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors.every((diagnostic) => diagnostic.domain === 'value')).toBe(
+      true,
+    )
+  })
+
+  test('syntax and annotation type errors still block', () => {
+    const syntaxBroken = analyzer.analyze('export type = string', [])
+    expect(syntaxBroken.entities).toEqual([])
+    expect(
+      syntaxBroken.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.severity === 'error' && diagnostic.domain === 'syntax',
+      ),
+    ).toBe(true)
+
+    const annotationBroken = analyzer.analyze(
+      'export type X = string\ndeclare let x: Unresolved',
+      [],
+    )
+    expect(annotationBroken.entities).toEqual([])
+    expect(
+      annotationBroken.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.severity === 'error' && diagnostic.domain === 'type',
+      ),
     ).toBe(true)
   })
 

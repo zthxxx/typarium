@@ -74,16 +74,27 @@ export interface SourceSpan {
   end: number
 }
 
+/**
+ * Which language space a diagnostic lives in. The canvas draws exported
+ * TYPES only, so value-space errors (assignments, calls, expression
+ * statements) cannot change what it shows — they never block updates.
+ * Syntax errors and type-space errors (aliases, annotations, imports)
+ * do change type meaning and keep the last good result on screen.
+ */
+export type DiagnosticDomain = 'syntax' | 'type' | 'value'
+
 export interface SourceDiagnostic {
   message: string
   span: SourceSpan
   severity: 'error' | 'warning'
+  domain: DiagnosticDomain
 }
 
 /**
  * The complete result of analyzing one source text plus the toggled
- * preset types. Error diagnostics mean the canvas keeps showing the
- * last good result; the editor owns error presentation.
+ * preset types. Syntax/type-domain error diagnostics mean the canvas
+ * keeps showing the last good result (value-domain errors do not
+ * block); the editor owns error presentation.
  */
 export interface AnalysisResult {
   entities: Array<TypeEntity>

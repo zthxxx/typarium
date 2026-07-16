@@ -89,6 +89,7 @@ export function scanExports(source: string): {
         message: `Too many exported types: showing the first ${MAX_ENTITIES} of ${all.length}.`,
         span: firstDropped.span,
         severity: 'warning',
+        domain: 'value',
       },
     ],
   }

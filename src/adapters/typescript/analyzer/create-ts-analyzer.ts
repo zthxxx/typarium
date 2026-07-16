@@ -17,6 +17,7 @@ import type {
 } from '#/core/analysis/adapter.ts'
 import type {
   AnalysisResult,
+  DiagnosticDomain,
   PairRelation,
   RelationKind,
   SourceDiagnostic,
@@ -141,12 +142,58 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     env.updateFile(fileName, next)
   }
 
+  /**
+   * Classify a semantic diagnostic by WHERE it sits: inside type space
+   * (type aliases, interfaces, annotations, type parameters, heritage
+   * clauses, enums) or in import/export wiring, its error can change
+   * the meaning of exported types; anywhere else it is a value-space
+   * error that cannot.
+   */
+  const semanticDomain = (
+    sourceFile: ts.SourceFile,
+    position: number,
+  ): DiagnosticDomain => {
+    let innermost: ts.Node = sourceFile
+    const descend = (node: ts.Node): void => {
+      if (position >= node.getStart(sourceFile) && position < node.getEnd()) {
+        innermost = node
+        ts.forEachChild(node, descend)
+      }
+    }
+    ts.forEachChild(sourceFile, descend)
+    for (
+      let node: ts.Node = innermost;
+      !ts.isSourceFile(node);
+      node = node.parent
+    ) {
+      if (
+        ts.isTypeNode(node) ||
+        ts.isTypeAliasDeclaration(node) ||
+        ts.isInterfaceDeclaration(node) ||
+        ts.isTypeParameterDeclaration(node) ||
+        ts.isHeritageClause(node) ||
+        ts.isEnumDeclaration(node) ||
+        ts.isImportDeclaration(node) ||
+        ts.isImportEqualsDeclaration(node) ||
+        ts.isExportDeclaration(node) ||
+        ts.isExportAssignment(node)
+      ) {
+        return 'type'
+      }
+    }
+    return 'value'
+  }
+
   const mainDiagnostics = (): Array<SourceDiagnostic> => {
-    const raw = [
-      ...env.languageService.getSyntacticDiagnostics(MAIN_FILE),
-      ...env.languageService.getSemanticDiagnostics(MAIN_FILE),
-    ]
-    return raw.map((diagnostic) => ({
+    const syntactic = env.languageService.getSyntacticDiagnostics(MAIN_FILE)
+    const semantic = env.languageService.getSemanticDiagnostics(MAIN_FILE)
+    const sourceFile = env.languageService
+      .getProgram()
+      ?.getSourceFile(MAIN_FILE)
+    const toDiagnostic = (
+      diagnostic: ts.Diagnostic,
+      domain: DiagnosticDomain,
+    ): SourceDiagnostic => ({
       message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
       span: {
         start: diagnostic.start ?? 0,
@@ -156,7 +203,21 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
         diagnostic.category === ts.DiagnosticCategory.Error
           ? ('error' as const)
           : ('warning' as const),
-    }))
+      domain,
+    })
+    return [
+      ...syntactic.map((diagnostic) => toDiagnostic(diagnostic, 'syntax')),
+      ...semantic.map((diagnostic) =>
+        toDiagnostic(
+          diagnostic,
+          // No span or no AST to place it in: assume it can affect
+          // types rather than silently drawing a wrong diagram.
+          diagnostic.start === undefined || !sourceFile
+            ? 'type'
+            : semanticDomain(sourceFile, diagnostic.start),
+        ),
+      ),
+    ]
   }
 
   const analyze = (
@@ -194,9 +255,17 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     setFile(PROBE_FILE, probeLines.join('\n'))
 
     const userErrors = mainDiagnostics()
-    if (userErrors.some((diagnostic) => diagnostic.severity === 'error')) {
-      // Broken user code makes type queries meaningless: report the
-      // diagnostics and let the canvas keep its last good result.
+    if (
+      userErrors.some(
+        (diagnostic) =>
+          diagnostic.severity === 'error' && diagnostic.domain !== 'value',
+      )
+    ) {
+      // Syntax or type-space errors make type queries meaningless:
+      // report the diagnostics and let the canvas keep its last good
+      // result. Value-space errors (e.g. a bad assignment) cannot
+      // change exported type meaning, so analysis proceeds through
+      // them (product rule).
       return {
         entities: [],
         relations: [],

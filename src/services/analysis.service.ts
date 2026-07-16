@@ -84,10 +84,14 @@ export class AnalysisService {
       runInAction(() => {
         this.diagnostics = result.diagnostics
         this.failed = false
-        const hasErrors = result.diagnostics.some(
-          (diagnostic) => diagnostic.severity === 'error',
+        // Value-space errors (bad assignments, calls) cannot change
+        // exported type meaning — only syntax and type-space errors
+        // hold the canvas on its last good diagram (product rule).
+        const hasBlockingErrors = result.diagnostics.some(
+          (diagnostic) =>
+            diagnostic.severity === 'error' && diagnostic.domain !== 'value',
         )
-        if (!hasErrors) {
+        if (!hasBlockingErrors) {
           this.lastGoodResult = result
         }
         this.analyzing = false
