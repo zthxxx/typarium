@@ -34,7 +34,7 @@ tests and debugging — assert on semantic state, not DOM internals.
 
 ## Deploy
 
-GitHub Pages via `.github/workflows/deploy.yml`, currently manual-only:
-private repos on the free plan cannot enable Pages (API 422). When the
-repo goes public, switch the trigger back to push and enable Pages with
-build_type=workflow. `public/CNAME` targets `typarium.zthxxx.me`.
+GitHub Pages via `.github/workflows/deploy.yml`: every push to main
+deploys (`build_type=workflow`; the custom domain lives in repo
+settings — workflow deploys ignore `public/CNAME`, the file is kept as
+documentation). `typarium.zthxxx.me` is proxied through Cloudflare.

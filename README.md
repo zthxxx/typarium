@@ -35,9 +35,9 @@ pnpm build        # static prerender into dist/client (GitHub Pages artifact)
 Four layers with inward-only dependencies (docs in Chinese under
 [`docs/`](./docs/README.md), everything else in English):
 
-- `src/core/` — language-agnostic set-semantics IR, invariant
-  validator, deterministic basemap + bubble-sets layout engine
-- `src/adapters/typescript/` — the analysis engine: TypeScript 5.9
+- `src/core/` — language-agnostic set-semantics IR and the
+  deterministic rectangle-containment layout engine
+- `src/adapters/typescript/` — the analysis engine: the TypeScript
   compiler API over `@typescript/vfs` inside a Web Worker
 - `src/services/` — power-di composition root, mobx state, persistence,
   share codec
@@ -47,5 +47,7 @@ The `LanguageAdapter` interface is the multi-language boundary: a second
 ADT language means a new adapter emitting the same IR, with layout and
 rendering untouched. Decision records live in [`docs/adr/`](./docs/adr/).
 
-The analysis engine pins TypeScript **5.9.x**, the last line with a JS
-compiler API (TS 7 is native, no browser story yet; see ADR-0011).
+The analysis engine pins TypeScript **6.0.3** (exact), the single
+TypeScript resource in the bundle: one analysis worker powers both the
+canvas semantics and the editor diagnostics/hover/completions, and
+monaco's embedded TS worker is never loaded (see ADR-0015).
