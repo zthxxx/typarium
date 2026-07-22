@@ -31,12 +31,12 @@
   "dependencies": {
     "@typarium/language-adapter": "workspace:*",
     "@typarium/set-model": "workspace:*",
-    "@typescript/ata": "^0.9.8",
-    "@typescript/vfs": "^1.6.4",
-    "twoslash": "^0.3.9",
-    "typescript": "6.0.3"
+    "@typescript/ata": "catalog:",
+    "@typescript/vfs": "catalog:",
+    "twoslash": "catalog:",
+    "typescript": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2"
+    "@types/node": "catalog:"
   }
 }

@@ -36,21 +36,21 @@
     ]
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.1",
-    "@commitlint/config-conventional": "^21.2.0",
-    "@playwright/test": "^1.61.1",
-    "@tanstack/eslint-config": "^0.4.0",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.0",
-    "@types/node": "^22.10.2",
-    "eslint": "^10.7.0",
-    "fast-check": "^4.9.0",
-    "jsdom": "^28.1.0",
-    "lint-staged": "^17.0.8",
-    "prettier": "^3.9.5",
-    "simple-git-hooks": "^2.13.1",
-    "typescript": "6.0.3",
-    "vitest": "^4.1.5"
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
+    "@playwright/test": "catalog:",
+    "@tanstack/eslint-config": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "fast-check": "catalog:",
+    "jsdom": "catalog:",
+    "lint-staged": "catalog:",
+    "prettier": "catalog:",
+    "simple-git-hooks": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
