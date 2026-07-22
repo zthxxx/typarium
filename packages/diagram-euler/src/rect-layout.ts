@@ -270,39 +270,78 @@ export function probeRectFaithfulness(input: LayoutInput): Array<string> {
 }
 
 /**
- * Balanced grid for S slots: odd counts (above 1) round UP to the next
- * even number, which is then factored as cols×rows with cols ≥ rows and
- * the smallest possible difference (product rule).
+ * Cells read best slightly landscape (room for a label row); grid
+ * factorization aims every cell's w/h at this ratio, so a tall narrow
+ * container naturally stacks rows while a wide one spreads columns —
+ * the SAME containment renders in whichever direction reads clearest.
  */
-export function gridDimensions(slots: number): { cols: number; rows: number } {
-  if (slots <= 1) return { cols: 1, rows: 1 }
-  return factorGrid(slots % 2 === 0 ? slots : slots + 1)
+const TARGET_CELL_ASPECT = 1.2
+
+function cellAspectScore(
+  cols: number,
+  rows: number,
+  containerAspect: number,
+): number {
+  const cellAspect = (containerAspect * rows) / cols
+  return Math.abs(Math.log(cellAspect / TARGET_CELL_ASPECT))
 }
 
 /**
- * Exact grid for union-covered containers: the count is NOT rounded —
- * children must fill the container completely, so 3 slots means 3×1
- * (never 2×2 with a hole). Primes lay out as a single row.
+ * Balanced grid for S slots in a container with the given w/h aspect:
+ * among candidates leaving at most ONE empty cell, pick the col×row
+ * split whose cells sit closest to the target aspect. Deterministic —
+ * ties keep the fewer-row candidate. `minCols` guards containers whose
+ * units span two cells (overlap pairs).
  */
-export function exactGridDimensions(slots: number): {
+export function gridDimensions(
+  slots: number,
+  containerAspect = 1.5,
+  minCols = 1,
+): { cols: number; rows: number } {
+  if (slots <= 1) return { cols: 1, rows: 1 }
+  let best: { cols: number; rows: number } | null = null
+  let bestScore = Number.POSITIVE_INFINITY
+  for (let rows = 1; rows <= slots; rows += 1) {
+    const cols = Math.ceil(slots / rows)
+    if (cols < minCols) continue
+    if (cols * rows - slots > 1) continue
+    const score = cellAspectScore(cols, rows, containerAspect)
+    if (score < bestScore - 1e-9) {
+      best = { cols, rows }
+      bestScore = score
+    }
+  }
+  return best ?? { cols: slots, rows: 1 }
+}
+
+/**
+ * Exact grid for union-covered containers: children must fill the
+ * container completely, so only true divisor pairs qualify (3 slots is
+ * 3×1 or 1×3 by aspect — never 2×2 with a hole). Primes lay out as a
+ * single row or single column, whichever the aspect prefers.
+ */
+export function exactGridDimensions(
+  slots: number,
+  containerAspect = 1.5,
+  minCols = 1,
+): {
   cols: number
   rows: number
 } {
   if (slots <= 1) return { cols: 1, rows: 1 }
-  return factorGrid(slots)
-}
-
-function factorGrid(count: number): { cols: number; rows: number } {
-  let best = { cols: count, rows: 1 }
-  for (let rows = 2; rows * rows <= count; rows += 1) {
-    if (count % rows === 0) {
-      const cols = count / rows
-      if (cols >= rows && cols - rows < best.cols - best.rows) {
-        best = { cols, rows }
-      }
+  let best: { cols: number; rows: number } | null = null
+  let bestScore = Number.POSITIVE_INFINITY
+  for (let rows = 1; rows <= slots; rows += 1) {
+    if (slots % rows !== 0) continue
+    const cols = slots / rows
+    if (cols < minCols) continue
+    const score = cellAspectScore(cols, rows, containerAspect)
+    if (score < bestScore - 1e-9) {
+      best = { cols, rows }
+      bestScore = score
     }
   }
-  return best
+  return best ?? { cols: slots, rows: 1 }
 }
 
 /** Fraction of a pair's combined width covered by EACH parent. */
@@ -372,10 +411,17 @@ function layoutContainer(
   }
   const totalWidth = units.reduce((sum, unit) => sum + unit.width, 0)
   const slots = totalWidth
+  // Aspect-aware split: the container's own shape decides direction —
+  // narrow canvases stack rows, wide ones spread columns, recursively.
+  const aspect =
+    container.height > 0
+      ? container.width / container.height
+      : TARGET_CELL_ASPECT
+  const minCols = units.some((unit) => unit.width === 2) ? 2 : 1
   const { cols, rows: plannedRows } =
     mode.covered || mode.extraSlot
-      ? exactGridDimensions(slots)
-      : gridDimensions(slots)
+      ? exactGridDimensions(slots, aspect, minCols)
+      : gridDimensions(slots, aspect, minCols)
 
   // Row-major packing; a double unit that would straddle the row edge
   // wraps to the next row, leaving a hole.

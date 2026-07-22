@@ -81,18 +81,34 @@ function intersect(a: Box, b: Box): Box {
 }
 
 describe('gridDimensions', () => {
-  test('rounds odd counts up to even and factors with cols >= rows', () => {
+  test('landscape default: near-target cells, at most one hole', () => {
     expect(gridDimensions(1)).toEqual({ cols: 1, rows: 1 })
     expect(gridDimensions(2)).toEqual({ cols: 2, rows: 1 })
     expect(gridDimensions(3)).toEqual({ cols: 2, rows: 2 })
     expect(gridDimensions(4)).toEqual({ cols: 2, rows: 2 })
     expect(gridDimensions(5)).toEqual({ cols: 3, rows: 2 })
     expect(gridDimensions(6)).toEqual({ cols: 3, rows: 2 })
-    expect(gridDimensions(8)).toEqual({ cols: 4, rows: 2 })
+    expect(gridDimensions(8)).toEqual({ cols: 3, rows: 3 })
     expect(gridDimensions(10)).toEqual({ cols: 5, rows: 2 })
     expect(gridDimensions(12)).toEqual({ cols: 4, rows: 3 })
-    expect(gridDimensions(14)).toEqual({ cols: 7, rows: 2 })
+    expect(gridDimensions(14)).toEqual({ cols: 5, rows: 3 })
     expect(gridDimensions(16)).toEqual({ cols: 4, rows: 4 })
+  })
+
+  test('portrait containers flip the split into rows', () => {
+    // The narrow-canvas case: three top-level containers become three
+    // independent ROWS instead of a 2×2 with skyscraper cells.
+    expect(gridDimensions(3, 0.4)).toEqual({ cols: 1, rows: 3 })
+    expect(gridDimensions(5, 0.5)).toEqual({ cols: 2, rows: 3 })
+    expect(exactGridDimensions(4, 0.4)).toEqual({ cols: 1, rows: 4 })
+    // Same slots, wide container: direction flips back.
+    expect(gridDimensions(3, 3)).toEqual({ cols: 3, rows: 1 })
+    expect(exactGridDimensions(4, 3)).toEqual({ cols: 4, rows: 1 })
+  })
+
+  test('overlap pairs keep at least two columns whatever the aspect', () => {
+    expect(gridDimensions(4, 0.3, 2).cols).toBeGreaterThanOrEqual(2)
+    expect(exactGridDimensions(4, 0.3, 2).cols).toBeGreaterThanOrEqual(2)
   })
 })
 
