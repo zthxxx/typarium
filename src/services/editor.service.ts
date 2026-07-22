@@ -114,6 +114,8 @@ export class EditorService {
 
   /** Format the whole document with the user's style options. */
   async formatDocument(options: FormatOptions): Promise<void> {
+    const format = this.analysis.editor?.format
+    if (!format) return
     // Spread into a plain object: callers pass mobx observables, and
     // an observable proxy cannot be structured-cloned into the worker.
     const plain: FormatOptions = {
@@ -123,7 +125,7 @@ export class EditorService {
       printWidth: options.printWidth,
     }
     try {
-      const formatted = await this.analysis.format(this.code, plain)
+      const formatted = await format(this.code, plain)
       if (formatted !== this.code) this.replaceCode(formatted)
     } catch {
       // Unformattable (syntax errors): leave the code untouched.
@@ -131,19 +133,16 @@ export class EditorService {
   }
 
   /**
-   * Snippet insertion (product rule): append `export type CN = <rhs>`
-   * with auto-incremented N and a blank line between consecutive
-   * declarations.
+   * Snippet insertion (product rule): append an auto-numbered export
+   * declaration with a blank line between consecutive declarations.
+   * Numbering and declaration grammar are the adapter's (ADR-0019);
+   * this service only owns the document edit.
    */
   insertSnippetLine(rhs: string): void {
-    const nextIndex =
-      Math.max(
-        0,
-        ...[...this.code.matchAll(/^export type C(\d+)\b/gm)].map((match) =>
-          Number(match[1]),
-        ),
-      ) + 1
-    const line = `export type C${nextIndex} = ${rhs}`
+    const line = this.analysis.descriptor.snippet.nextDeclaration(
+      this.code,
+      rhs,
+    )
     const trimmed = this.code.replace(/\s+$/, '')
     const next = trimmed === '' ? `${line}\n` : `${trimmed}\n\n${line}\n`
     this.replaceCode(next)

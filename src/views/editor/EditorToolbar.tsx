@@ -18,6 +18,7 @@ export const EditorToolbar = observer(function EditorToolbar() {
   const settings = useService(SettingsService)
   const editor = useService(EditorService)
   const presets = useService(PresetService)
+  const analysis = useService(AnalysisService)
 
   const snippets = presets.catalog.filter((preset) => preset.kind === 'snippet')
 
@@ -50,14 +51,16 @@ export const EditorToolbar = observer(function EditorToolbar() {
         )}
       />
 
-      <IconButton
-        label={settings.t('editor.format')}
-        onClick={() => {
-          void editor.formatDocument(settings.editorConfig)
-        }}
-      >
-        <Bars3BottomLeftIcon className="h-4 w-4" aria-hidden="true" />
-      </IconButton>
+      {analysis.editor?.format ? (
+        <IconButton
+          label={settings.t('editor.format')}
+          onClick={() => {
+            void editor.formatDocument(settings.editorConfig)
+          }}
+        >
+          <Bars3BottomLeftIcon className="h-4 w-4" aria-hidden="true" />
+        </IconButton>
+      ) : null}
 
       <MenuButton
         icon={<Cog6ToothIcon className="h-4 w-4" aria-hidden="true" />}
@@ -141,7 +144,7 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
           compilerOptions
         </span>
         <ul className="flex flex-col gap-1 opacity-70">
-          {analysis.compilerOptionsDisplay.map(([key, value]) => (
+          {analysis.descriptor.compilerOptionsDisplay.map(([key, value]) => (
             <li key={key} className="flex items-baseline justify-between gap-2">
               <span>{key}</span>
               <span className="max-w-36 text-right break-words text-(--color-ink-soft)">

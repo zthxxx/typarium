@@ -57,7 +57,7 @@ const AppShell = observer(function AppShell({
       .copyShareUrl({
         withContent,
         envelope: {
-          languageId: adapter.id,
+          languageId: adapter.descriptor.id,
           code: editor.code,
           presets: presets.activeLabels,
         },
@@ -90,7 +90,7 @@ const AppShell = observer(function AppShell({
         </section>
         <EditorDrawer />
       </main>
-      <AppFooter engineLabel={adapter.engineLabel} />
+      <AppFooter engineLabel={adapter.descriptor.engineLabel} />
       <AnyBadge />
       {toast ? (
         <div className="toast-pop fixed bottom-14 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-(--color-ink) bg-white px-5 py-2 text-sm font-bold shadow-(--shadow-sticker)">

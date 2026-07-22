@@ -1,6 +1,7 @@
 import { computed, makeAutoObservable } from 'mobx'
 import { computeCanvasLayout } from '#/core/layout/index.ts'
 import { MIN_VIEWPORT } from '#/core/layout/constants.ts'
+import type { SpecialTypeNames } from '#/core/analysis/adapter.ts'
 import type { Box, CanvasLayout, EntityRect } from '#/core/layout/types.ts'
 import type { AnalysisService } from '#/services/analysis.service.ts'
 import type { TypeEntity } from '#/core/set-model/types.ts'
@@ -48,6 +49,11 @@ export class VisualizationStore {
   setViewport(width: number, height: number): void {
     this.viewportWidth = Math.max(Math.round(width), MIN_VIEWPORT.width)
     this.viewportHeight = Math.max(Math.round(height), MIN_VIEWPORT.height)
+  }
+
+  /** Language display names for the special roles (never hardcode TS). */
+  get specialNames(): SpecialTypeNames {
+    return this.analysis.descriptor.specialTypeNames
   }
 
   get entities(): Array<TypeEntity> {

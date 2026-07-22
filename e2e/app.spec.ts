@@ -270,7 +270,7 @@ test('editor hover quick info comes from the single worker', async ({
   await loadCode(page, 'export type Foo = "foo" | "bar"')
   const info = await page.evaluate(async () => {
     const t = window.__typarium!
-    return t.analysis.quickInfo(t.editor.code, 'export type F'.length)
+    return t.analysis.editor?.quickInfo?.(t.editor.code, 'export type F'.length)
   })
   expect(info).toContain('Foo')
 })

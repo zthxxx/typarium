@@ -1,8 +1,9 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 import type {
-  CompletionPreferences,
-  FormatOptions,
+  BootProgressEvent,
+  EditorCapabilities,
   LanguageAdapter,
+  LanguageDescriptor,
   VirtualType,
 } from '#/core/analysis/adapter.ts'
 import type {
@@ -33,42 +34,41 @@ export class AnalysisService {
     })
   }
 
+  /** Static language facts (names, presets, snippet syntax, engine). */
+  get descriptor(): LanguageDescriptor {
+    return this.adapter.descriptor
+  }
+
   get languageId(): string {
-    return this.adapter.id
+    return this.adapter.descriptor.id
   }
 
-  get compilerOptionsDisplay(): Array<[string, string]> {
-    return this.adapter.compilerOptionsDisplay
+  /**
+   * Optional editor language features. Views check per capability and
+   * degrade (hide the button / skip the provider) when one is absent.
+   */
+  get editor(): EditorCapabilities | undefined {
+    return this.adapter.editor
   }
 
-  /** Editor language features, delegated to the single adapter worker. */
+  /** Fast diagnostics-only pass driving editor squiggles. */
   check(source: string): Promise<Array<SourceDiagnostic>> {
     return this.adapter.check(source)
   }
 
-  quickInfo(source: string, offset: number): Promise<string | null> {
-    return this.adapter.quickInfo(source, offset)
-  }
-
-  completions(
-    source: string,
-    offset: number,
-    preferences?: CompletionPreferences,
-  ) {
-    return this.adapter.completions(source, offset, preferences)
-  }
-
-  format(source: string, options: FormatOptions): Promise<string> {
-    return this.adapter.format(source, options)
-  }
-
-  twoslashQueries(source: string) {
-    return this.adapter.twoslashQueries(source)
-  }
-
   /** Late type-acquisition arrivals (see LanguageAdapter contract). */
-  onTypesAcquired(listener: () => void): void {
-    this.adapter.onTypesAcquired(listener)
+  onTypesAcquired(listener: () => void): () => void {
+    return this.adapter.onTypesAcquired(listener)
+  }
+
+  /** Engine boot progress passthrough for the boot pipeline display. */
+  onBootProgress(listener: (event: BootProgressEvent) => void): () => void {
+    return this.adapter.onBootProgress(listener)
+  }
+
+  /** Kick engine initialization eagerly (idempotent). */
+  warmup(): Promise<void> {
+    return this.adapter.warmup()
   }
 
   async analyze(

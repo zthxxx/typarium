@@ -1,36 +1,16 @@
 import { proxy, wrap } from 'comlink'
-import { FIXED_COMPILER_OPTIONS_DISPLAY } from '#/adapters/typescript/compiler-options-display.ts'
-import { typescriptPresets } from '#/adapters/typescript/presets.ts'
+import { typescriptDescriptor } from '#/adapters/typescript/descriptor.ts'
 import type { Remote } from 'comlink'
 import type { AnalysisWorkerApi } from '#/adapters/typescript/analysis.worker.ts'
-import type { LanguageAdapter } from '#/core/analysis/adapter.ts'
+import type {
+  BootProgressEvent,
+  LanguageAdapter,
+} from '#/core/analysis/adapter.ts'
 
 /**
- * Kept in sync with the exact `typescript` pin in package.json — the
- * single implementation powering analysis, diagnostics, hover and
- * completions (ADR-0015). 6.0.3 is the last line with a JS compiler
- * API, required for checker-level containment queries.
- */
-const ENGINE_LABEL = 'TypeScript 6.0.3'
-
-const SAMPLE_SOURCE = `// typarium — every exported type is drawn as a set of values
-
-export type Fruit = 'apple' | 'banana'
-export type Text = string
-export type TextOrNumber = string | number
-
-export type Point = { x: number; y: number }
-
-// Function parameters are contravariant under strict mode,
-// so WideHandler ends up INSIDE StrHandler:
-export type Handler<X> = (value: X) => void
-export type StrHandler = Handler<string>
-export type WideHandler = Handler<string | number>
-`
-
-/**
- * Main-thread face of the TypeScript adapter: a thin comlink proxy to
- * the analysis worker (ADR-0007's LanguageAdapter boundary).
+ * Main-thread face of the TypeScript adapter: the pure-data descriptor
+ * plus a thin comlink proxy to the analysis worker (ADR-0007's
+ * LanguageAdapter boundary, capability shape per ADR-0019).
  */
 export function createTypescriptAdapter(): LanguageAdapter {
   const worker = new Worker(new URL('./analysis.worker.ts', import.meta.url), {
@@ -39,25 +19,51 @@ export function createTypescriptAdapter(): LanguageAdapter {
   })
   const remote: Remote<AnalysisWorkerApi> = wrap<AnalysisWorkerApi>(worker)
 
+  // The worker exposes ONE callback slot per event; the adapter fans
+  // out to real multi-subscriber sets so a second listener never
+  // silently replaces the first.
+  const typesListeners = new Set<() => void>()
+  const bootListeners = new Set<(event: BootProgressEvent) => void>()
+  void remote.onTypesAcquired(
+    proxy(() => {
+      for (const listener of typesListeners) listener()
+    }),
+  )
+  void remote.onBootProgress(
+    proxy((event: BootProgressEvent) => {
+      for (const listener of bootListeners) listener(event)
+    }),
+  )
+
+  let warmupPromise: Promise<void> | null = null
+
   return {
-    id: 'typescript',
-    label: 'TypeScript',
-    editorLanguageId: 'typescript',
-    presets: typescriptPresets,
-    sampleSource: SAMPLE_SOURCE,
-    engineLabel: ENGINE_LABEL,
-    compilerOptionsDisplay: FIXED_COMPILER_OPTIONS_DISPLAY,
+    descriptor: typescriptDescriptor,
 
     analyze: (source, virtualTypes) => remote.analyze(source, virtualTypes),
     check: (source) => remote.check(source),
-    quickInfo: (source, offset) => remote.quickInfo(source, offset),
-    completions: (source, offset, preferences) =>
-      remote.completions(source, offset, preferences),
-    format: (source, options) => remote.format(source, options),
-    twoslashQueries: (source) => remote.twoslashQueries(source),
-    onTypesAcquired: (listener) => {
-      void remote.onTypesAcquired(proxy(listener))
+
+    editor: {
+      quickInfo: (source, offset) => remote.quickInfo(source, offset),
+      completions: (source, offset, preferences) =>
+        remote.completions(source, offset, preferences),
+      format: (source, options) => remote.format(source, options),
+      inlineQueries: (source) => remote.inlineQueries(source),
     },
+
+    onTypesAcquired: (listener) => {
+      typesListeners.add(listener)
+      return () => typesListeners.delete(listener)
+    },
+    onBootProgress: (listener) => {
+      bootListeners.add(listener)
+      return () => bootListeners.delete(listener)
+    },
+    warmup: () => {
+      warmupPromise ??= remote.warmup()
+      return warmupPromise
+    },
+
     dispose: () => worker.terminate(),
   }
 }

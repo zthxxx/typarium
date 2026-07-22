@@ -72,8 +72,10 @@ export const RectCanvas = observer(function RectCanvas() {
       {universeActive ? (
         <span className="absolute top-2 left-4 z-10 font-mono text-sm font-bold text-(--color-brand)">
           {[
-            'unknown',
-            ...viz.universeLabels.filter((l) => l !== 'unknown'),
+            viz.specialNames.universe,
+            ...viz.universeLabels.filter(
+              (label) => label !== viz.specialNames.universe,
+            ),
           ].join(' ≡ ')}
         </span>
       ) : null}
@@ -149,9 +151,9 @@ export const RectCanvas = observer(function RectCanvas() {
           pointer={pointer}
           stack={stack}
           neverRow={[
-            settings.t('canvas.neverRow'),
-            // The preset's own entity is literally named `never` —
-            // only code exports add information here.
+            settings.t('canvas.neverRow', { name: viz.specialNames.empty }),
+            // The preset's own entity carries the language's empty-set
+            // name already — only code exports add information here.
             ...viz.neverEntities
               .filter((entity) => entity.origin === 'code')
               .map((entity) => entity.name),
@@ -336,7 +338,7 @@ const NeverLegend = observer(function NeverLegend() {
           strokeDasharray={hovered ? undefined : '3 3'}
         />
       </svg>
-      {settings.t('canvas.neverLegend')}
+      {settings.t('canvas.neverLegend', { name: viz.specialNames.empty })}
       {hovered && resolved.length > 0 ? (
         <Popup anchor={pillRef} placement="top-start" distance={8}>
           <span className="block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-mono text-[11px] shadow-(--shadow-sticker)">

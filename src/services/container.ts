@@ -23,7 +23,7 @@ export function createAppContainer(adapter: LanguageAdapter): IocContext {
   const ui = new UiService()
   const analysis = new AnalysisService(adapter)
   const editor = new EditorService(analysis, persistence)
-  const presets = new PresetService(adapter.presets, {
+  const presets = new PresetService(adapter.descriptor.presets, {
     insertSnippet: (rhs) => editor.insertSnippetLine(rhs),
     onVirtualChange: () => editor.analyzeNow(),
   })
@@ -77,5 +77,5 @@ export async function bootstrapContent(
     return
   }
 
-  editor.replaceCode(adapter.sampleSource)
+  editor.replaceCode(adapter.descriptor.sampleSource)
 }

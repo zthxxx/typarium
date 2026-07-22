@@ -2,6 +2,7 @@ import { expose } from 'comlink'
 import { createTsAnalyzer } from '#/adapters/typescript/analyzer/index.ts'
 import type { TsAnalyzer } from '#/adapters/typescript/analyzer/index.ts'
 import type {
+  BootProgressEvent,
   VirtualType,
   CompletionPreferences,
   FormatOptions,
@@ -24,14 +25,28 @@ const libModules = import.meta.glob('/node_modules/typescript/lib/lib.*.d.ts', {
 let analyzerPromise: Promise<TsAnalyzer> | null = null
 let acquirer: TypeAcquirer | null = null
 let typesAcquiredListener: (() => void) | null = null
+let bootProgressListener: ((event: BootProgressEvent) => void) | null = null
+
+const emitProgress = (event: BootProgressEvent) => {
+  bootProgressListener?.(event)
+}
 
 function getAnalyzer(): Promise<TsAnalyzer> {
   analyzerPromise ??= (async () => {
+    emitProgress({ stage: 'engine-init', fraction: 0 })
+    const entries = Object.entries(libModules)
     const libFiles = new Map<string, string>()
+    let loaded = 0
     await Promise.all(
-      Object.entries(libModules).map(async ([path, load]) => {
+      entries.map(async ([path, load]) => {
         const fileName = path.slice(path.lastIndexOf('/') + 1)
         libFiles.set(`/${fileName}`, await load())
+        loaded += 1
+        // Lib loading dominates init: report real per-file fractions.
+        emitProgress({
+          stage: 'engine-init',
+          fraction: (loaded / entries.length) * 0.8,
+        })
       }),
     )
     const analyzer = createTsAnalyzer({ libFiles })
@@ -39,6 +54,7 @@ function getAnalyzer(): Promise<TsAnalyzer> {
       receiveFile: (path, content) => analyzer.addLibraryFile(path, content),
       onAcquired: () => typesAcquiredListener?.(),
     })
+    emitProgress({ stage: 'ready' })
     return analyzer
   })()
   return analyzerPromise
@@ -53,12 +69,19 @@ async function withTypes(source: string): Promise<TsAnalyzer> {
 
 const api = {
   /**
-   * Register the main-thread callback fired when type acquisition
-   * delivers typings AFTER some computation already ran without them
-   * (comlink-proxied function).
+   * Register the main-thread callbacks (comlink-proxied). One slot per
+   * event: the adapter registers exactly once and fans out locally to
+   * its own subscriber set.
    */
   onTypesAcquired(listener: () => void) {
     typesAcquiredListener = listener
+  },
+  onBootProgress(listener: (event: BootProgressEvent) => void) {
+    bootProgressListener = listener
+  },
+  /** Eager engine boot; idempotent, resolves when the checker is ready. */
+  async warmup() {
+    await getAnalyzer()
   },
   async analyze(source: string, virtualTypes: Array<VirtualType>) {
     return (await withTypes(source)).analyze(source, virtualTypes)
@@ -76,7 +99,7 @@ const api = {
   ) {
     return (await getAnalyzer()).completions(source, offset, preferences)
   },
-  async twoslashQueries(source: string) {
+  async inlineQueries(source: string) {
     return (await getAnalyzer()).twoslashQueries(source)
   },
   async format(source: string, options: FormatOptions): Promise<string> {

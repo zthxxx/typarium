@@ -36,7 +36,7 @@ export const MonacoEditor = observer(function MonacoEditor() {
 
       const model = monaco.editor.createModel(
         editorService.code,
-        'typescript',
+        analysis.descriptor.editorLanguageId,
         monaco.Uri.parse('file:///main.ts'),
       )
 
@@ -88,51 +88,64 @@ export const MonacoEditor = observer(function MonacoEditor() {
         '!suggestWidgetVisible && !findWidgetVisible && !parameterHintsVisible',
       )
 
-      // Language features backed by the single analysis worker.
-      disposables.push(
-        monaco.languages.registerHoverProvider('typescript', {
-          provideHover: async (hoverModel, position) => {
-            const info = await analysis.quickInfo(
-              hoverModel.getValue(),
-              hoverModel.getOffsetAt(position),
-            )
-            if (!info) return null
-            return {
-              contents: [{ value: '```typescript\n' + info + '\n```' }],
-            }
-          },
-        }),
-        monaco.languages.registerCompletionItemProvider('typescript', {
-          triggerCharacters: ['.', '"', "'", '<'],
-          provideCompletionItems: async (completionModel, position) => {
-            const entries = await analysis.completions(
-              completionModel.getValue(),
-              completionModel.getOffsetAt(position),
-              {
-                quotePreference: settings.editorConfig.singleQuote
-                  ? 'single'
-                  : 'double',
-              },
-            )
-            const word = completionModel.getWordUntilPosition(position)
-            const range = {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            }
-            return {
-              suggestions: entries.map((entry) => ({
-                label: entry.name,
-                kind: completionKind(monaco, entry.kind),
-                insertText: entry.name,
-                sortText: entry.sortText,
-                range,
-              })),
-            }
-          },
-        }),
-      )
+      // Language features backed by the adapter's OPTIONAL editor
+      // capabilities (ADR-0019): a missing capability simply means no
+      // provider — the editor degrades instead of breaking.
+      const languageId = analysis.descriptor.editorLanguageId
+      const quickInfo = analysis.editor?.quickInfo
+      if (quickInfo) {
+        disposables.push(
+          monaco.languages.registerHoverProvider(languageId, {
+            provideHover: async (hoverModel, position) => {
+              const info = await quickInfo(
+                hoverModel.getValue(),
+                hoverModel.getOffsetAt(position),
+              )
+              if (!info) return null
+              return {
+                contents: [
+                  { value: '```' + languageId + '\n' + info + '\n```' },
+                ],
+              }
+            },
+          }),
+        )
+      }
+      const completions = analysis.editor?.completions
+      if (completions) {
+        disposables.push(
+          monaco.languages.registerCompletionItemProvider(languageId, {
+            triggerCharacters: ['.', '"', "'", '<'],
+            provideCompletionItems: async (completionModel, position) => {
+              const entries = await completions(
+                completionModel.getValue(),
+                completionModel.getOffsetAt(position),
+                {
+                  quotePreference: settings.editorConfig.singleQuote
+                    ? 'single'
+                    : 'double',
+                },
+              )
+              const word = completionModel.getWordUntilPosition(position)
+              const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
+              }
+              return {
+                suggestions: entries.map((entry) => ({
+                  label: entry.name,
+                  kind: completionKind(monaco, entry.kind),
+                  insertText: entry.name,
+                  sortText: entry.sortText,
+                  range,
+                })),
+              }
+            },
+          }),
+        )
+      }
 
       editorRef.current = editor
       if (import.meta.env.DEV) {
@@ -211,14 +224,16 @@ export const MonacoEditor = observer(function MonacoEditor() {
     })
   }, [editorService])
 
-  // Twoslash `// ^?` queries render as ghost text right after the `^?`
-  // marker on its own comment line, the TS-Playground behavior. Runs on
-  // the checked code (350ms debounce) and only when a query marker is
-  // present. Uses a decorations collection — editor.deltaDecorations is
-  // a deprecated no-op in monaco 0.55.
+  // Inline type queries (`// ^?`, twoslash-style) render as ghost text
+  // right after the marker on its own comment line, the TS-Playground
+  // behavior. Runs on the checked code (350ms debounce) and only when a
+  // query marker is present. Uses a decorations collection —
+  // editor.deltaDecorations is a deprecated no-op in monaco 0.55.
   const twoslashCollection =
     useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
   useEffect(() => {
+    const inlineQueries = analysis.editor?.inlineQueries
+    if (!inlineQueries) return
     return autorun(() => {
       // Track the same debounced signal the markers use.
       void editorService.editorDiagnostics
@@ -232,8 +247,7 @@ export const MonacoEditor = observer(function MonacoEditor() {
         twoslashCollection.current.set([])
         return
       }
-      void analysis
-        .twoslashQueries(code)
+      void inlineQueries(code)
         .then((queries) => {
           const currentModel = editorRef.current?.getModel()
           if (!currentModel || currentModel.getValue() !== code) return

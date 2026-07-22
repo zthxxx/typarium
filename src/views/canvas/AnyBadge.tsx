@@ -24,6 +24,7 @@ export const AnyBadge = observer(function AnyBadge() {
   const [showTip, setShowTip] = useState(false)
 
   const anyEntities = viz.anyEntities
+  const anyName = viz.specialNames.any
   const visible = anyEntities.length > 0
 
   const clamp = (x: number, y: number) => {
@@ -58,7 +59,7 @@ export const AnyBadge = observer(function AnyBadge() {
     <button
       ref={badgeRef}
       type="button"
-      aria-label={settings.t('anyBadge.tooltip')}
+      aria-label={settings.t('anyBadge.tooltip', { name: anyName })}
       className="fixed z-40 cursor-grab touch-none active:cursor-grabbing"
       style={
         position
@@ -113,14 +114,16 @@ export const AnyBadge = observer(function AnyBadge() {
           style={{ filter: 'url(#any-wobble)' }}
         />
         <span className="relative block px-6 py-2 font-mono text-lg font-bold text-white">
-          {settings.t('anyBadge.label')}
+          {anyName}
         </span>
       </span>
 
       {showTip ? (
         <Popup anchor={badgeRef} placement="bottom" distance={12}>
           <span className="block w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-(--shadow-sticker)">
-            <span className="mb-1 block">{settings.t('anyBadge.tooltip')}</span>
+            <span className="mb-1 block">
+              {settings.t('anyBadge.tooltip', { name: anyName })}
+            </span>
             <ul className="flex flex-col gap-1">
               {anyEntities.map((entity) => (
                 <li

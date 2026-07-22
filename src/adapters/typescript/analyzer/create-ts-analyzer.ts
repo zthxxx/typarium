@@ -12,7 +12,7 @@ import { scanExports } from '#/adapters/typescript/analyzer/scan-exports.ts'
 import type {
   CompletionEntry,
   CompletionPreferences,
-  TwoslashQuery,
+  InlineQuery,
   VirtualType,
 } from '#/core/analysis/adapter.ts'
 import type {
@@ -53,7 +53,7 @@ export interface TsAnalyzer {
     preferences?: CompletionPreferences,
   ) => Array<CompletionEntry>
   /** Twoslash `// ^?` queries; skips the twoslasher when unmarked. */
-  twoslashQueries: (source: string) => Array<TwoslashQuery>
+  twoslashQueries: (source: string) => Array<InlineQuery>
   /** Inject an acquired declaration file (ATA) into the project. */
   addLibraryFile: (path: string, content: string) => void
   dispose: () => void
@@ -581,7 +581,7 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
   // Twoslash builds its own program per call — lazily created, cached,
   // and only invoked when the source actually carries a `^?` marker.
   let twoslasher: TwoslashInstance | null = null
-  const twoslashQueries = (source: string): Array<TwoslashQuery> => {
+  const twoslashQueries = (source: string): Array<InlineQuery> => {
     if (!/\/\/\s*\^\?/.test(source)) return []
     twoslasher ??= createTwoslasher({
       tsModule: ts,

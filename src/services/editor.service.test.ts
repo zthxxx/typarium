@@ -143,18 +143,18 @@ describe('EditorService debounce pipeline', () => {
 })
 
 describe('EditorService snippet insertion', () => {
+  // The fake language declares `set CN = rhs` — the assertions proving
+  // EditorService carries NO TypeScript grammar of its own (ADR-0019).
   test('first snippet lands as C1 in empty code', () => {
     const { editor } = makeHarness()
-    editor.insertSnippetLine('string | number')
-    expect(editor.code).toBe('export type C1 = string | number\n')
+    editor.insertSnippetLine('a | b')
+    expect(editor.code).toBe('set C1 = a | b\n')
   })
 
   test('numbering continues past the highest existing CN', () => {
     const { editor } = makeHarness()
-    editor.replaceCode('export type C1 = string\n\nexport type C7 = number\n')
-    editor.insertSnippetLine('boolean')
-    expect(editor.code).toBe(
-      'export type C1 = string\n\nexport type C7 = number\n\nexport type C8 = boolean\n',
-    )
+    editor.replaceCode('set C1 = a\n\nset C7 = b\n')
+    editor.insertSnippetLine('c')
+    expect(editor.code).toBe('set C1 = a\n\nset C7 = b\n\nset C8 = c\n')
   })
 })
