@@ -101,12 +101,13 @@ function ModeRadio({
   disabledHint?: string
   onSelect: () => void
 }) {
+  // Checked state is COLOR only (no offset): radios keep one baseline.
   const base =
     'rounded-full border-2 px-2.5 py-0.5 font-mono text-[11px] font-bold transition-[transform,box-shadow,background-color,border-color]'
   const palette = disabled
     ? 'cursor-not-allowed border-(--color-line) bg-(--color-paper) text-(--color-ink-soft) opacity-60'
     : checked
-      ? 'translate-y-[2px] border-(--color-brand-deep) bg-(--color-brand) text-white'
+      ? 'border-(--color-brand-deep) bg-(--color-brand) text-white shadow-(--shadow-keycap)'
       : 'border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) hover:-translate-y-[1px]'
   return (
     <button

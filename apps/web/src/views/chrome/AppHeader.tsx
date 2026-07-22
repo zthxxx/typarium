@@ -89,7 +89,7 @@ export const AppHeader = observer(function AppHeader({
 
         <button
           type="button"
-          className="flex h-[30px] items-center rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 text-sm font-bold whitespace-nowrap text-white shadow-[0_3px_0_var(--color-brand-deep)] transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+          className="flex h-[30px] items-center rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 text-sm font-bold whitespace-nowrap text-white shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
           onClick={() => {
             // One click, one link: always share WITH the editor content.
             onShare(true)

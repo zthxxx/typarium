@@ -44,17 +44,17 @@ const PresetChip = observer(function PresetChip({
   onClick: () => void
 }) {
   const warning = preset.tone === 'warning'
-  // Keycap physics: raised when idle, pressed-in (down + no shadow)
-  // once active — the chip IS the toggle state.
+  // Toggle state is COLOR only: an active chip keeps the exact box and
+  // shadow of its idle siblings, so rows stay visually aligned.
   const base =
-    'rounded-full border-2 px-2.5 py-0.5 font-mono text-[11px] font-bold transition-[transform,box-shadow,background-color,border-color]'
+    'rounded-full border-2 px-2.5 py-0.5 font-mono text-[11px] font-bold transition-[transform,box-shadow,background-color,border-color] hover:-translate-y-[1px]'
   const palette = warning
     ? active
-      ? 'translate-y-[2px] border-(--color-warn-any) bg-(--color-warn-any) text-white'
-      : 'border-(--color-warn-any)/70 bg-white text-(--color-warn-any) shadow-[0_3px_0_rgba(255,77,48,0.35)] hover:-translate-y-[1px]'
+      ? 'border-(--color-warn-any) bg-(--color-warn-any) text-white shadow-[0_3px_0_rgba(255,77,48,0.35)]'
+      : 'border-(--color-warn-any)/70 bg-white text-(--color-warn-any) shadow-[0_3px_0_rgba(255,77,48,0.35)]'
     : active
-      ? 'translate-y-[2px] border-(--color-brand-deep) bg-(--color-brand) text-white'
-      : 'border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) hover:-translate-y-[1px]'
+      ? 'border-(--color-brand-deep) bg-(--color-brand) text-white shadow-(--shadow-keycap)'
+      : 'border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap)'
   return (
     <button
       type="button"
