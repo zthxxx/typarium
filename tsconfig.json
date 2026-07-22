@@ -1,10 +1,14 @@
 {
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
+    "packages/*/src/**/*",
+    "apps/web/src/**/*",
+    "apps/web/e2e/**/*",
+    "apps/web/scripts/**/*",
+    "apps/web/vite.config.ts",
+    "apps/web/playwright.config.ts",
     "eslint.config.js",
     "prettier.config.js",
-    "vite.config.js"
+    "vitest.config.ts"
   ],
 
   "compilerOptions": {
@@ -12,15 +16,15 @@
     "jsx": "react-jsx",
     "module": "ESNext",
     "paths": {
-      "#/*": ["./src/*"],
-      "@/*": ["./src/*"]
+      "#/*": ["./apps/web/src/*"],
+      "@/*": ["./apps/web/src/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "customConditions": ["typarium-source"],
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,

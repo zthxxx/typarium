@@ -1,0 +1,32 @@
+/**
+ * The typarium categorical palette (12 hues x fill/stroke), consumed
+ * by both diagram packages and any host chrome. Override any variable
+ * after importing to re-theme.
+ */
+
+:root {
+  --set-hue-0-fill: rgba(87, 137, 255, 0.16);
+  --set-hue-0-stroke: rgb(87, 137, 255);
+  --set-hue-1-fill: rgba(2, 162, 140, 0.16);
+  --set-hue-1-stroke: rgb(2, 162, 140);
+  --set-hue-2-fill: rgba(219, 146, 0, 0.16);
+  --set-hue-2-stroke: rgb(178, 137, 0);
+  --set-hue-3-fill: rgba(239, 87, 173, 0.14);
+  --set-hue-3-stroke: rgb(239, 87, 173);
+  --set-hue-4-fill: rgba(124, 132, 238, 0.16);
+  --set-hue-4-stroke: rgb(124, 132, 238);
+  --set-hue-5-fill: rgba(27, 167, 12, 0.14);
+  --set-hue-5-stroke: rgb(27, 167, 12);
+  --set-hue-6-fill: rgba(250, 133, 0, 0.14);
+  --set-hue-6-stroke: rgb(219, 117, 0);
+  --set-hue-7-fill: rgba(165, 113, 254, 0.14);
+  --set-hue-7-stroke: rgb(165, 113, 254);
+  --set-hue-8-fill: rgba(0, 175, 240, 0.14);
+  --set-hue-8-stroke: rgb(3, 155, 211);
+  --set-hue-9-fill: rgba(222, 89, 222, 0.13);
+  --set-hue-9-stroke: rgb(222, 89, 222);
+  --set-hue-10-fill: rgba(149, 178, 0, 0.14);
+  --set-hue-10-stroke: rgb(149, 178, 0);
+  --set-hue-11-fill: rgba(247, 85, 80, 0.13);
+  --set-hue-11-stroke: rgb(247, 85, 80);
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@typarium/analyzer-typescript",
+  "version": "0.1.0",
+  "description": "The TypeScript language analyzer for typarium: checker-level containment matrix, witness-corrected assignability, editor language features. Node-usable; worker/transport glue stays with the host app",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "typarium-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./descriptor": {
+      "typarium-source": "./src/descriptor.ts",
+      "types": "./dist/descriptor.d.ts",
+      "default": "./dist/descriptor.js"
+    },
+    "./node": {
+      "typarium-source": "./src/lib-files.node.ts",
+      "types": "./dist/lib-files.node.d.ts",
+      "default": "./dist/lib-files.node.js"
+    }
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@typarium/language-adapter": "workspace:*",
+    "@typarium/set-model": "workspace:*",
+    "@typescript/ata": "^0.9.8",
+    "@typescript/vfs": "^1.6.4",
+    "twoslash": "^0.3.9",
+    "typescript": "6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2"
+  }
+}

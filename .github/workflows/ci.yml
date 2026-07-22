@@ -57,5 +57,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-results
-          path: e2e/.results
+          path: apps/web/e2e/.results
           retention-days: 7

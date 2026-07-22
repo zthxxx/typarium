@@ -1,0 +1,55 @@
+{
+  "name": "@typarium/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "node scripts/generate-ts-libs.mjs && vite dev --port 3000",
+    "generate-routes": "tsr generate",
+    "generate-sample-snapshot": "node --conditions typarium-source --experimental-strip-types scripts/generate-sample-snapshot.mts",
+    "build": "node scripts/generate-ts-libs.mjs && pnpm generate-sample-snapshot && vite build && node scripts/inject-preload.mjs",
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "perf:cold": "node scripts/measure-cold-start.mjs"
+  },
+  "dependencies": {
+    "@floating-ui/core": "^1.8.0",
+    "@heroicons/react": "^2.2.0",
+    "@tanstack/react-router": "^1.170.18",
+    "@tanstack/react-start": "^1.168.28",
+    "@typarium/analyzer-typescript": "workspace:*",
+    "@typarium/diagram-euler": "workspace:*",
+    "@typarium/diagram-hasse": "workspace:*",
+    "@typarium/language-adapter": "workspace:*",
+    "@typarium/set-model": "workspace:*",
+    "comlink": "^4.4.2",
+    "idb": "^8.0.3",
+    "lz-string": "^1.5.0",
+    "mobx": "^6.16.1",
+    "mobx-react-lite": "^4.1.1",
+    "monaco-editor": "^0.55.1",
+    "power-di": "^2.4.57",
+    "prettier": "^3.9.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/devtools-vite": "^0.8.1",
+    "@tanstack/react-devtools": "^0.10.8",
+    "@tanstack/react-router-devtools": "^1.167.0",
+    "@tanstack/react-router-ssr-query": "^1.167.1",
+    "@tanstack/router-cli": "^1.132.0",
+    "@tanstack/router-plugin": "^1.132.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "6.0.3",
+    "vite": "^8.0.0"
+  }
+}

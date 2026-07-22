@@ -13,9 +13,9 @@ __unconfig*
 todos.json
 
 # test artifacts
-e2e/.results
+apps/web/e2e/.results
 playwright-report
 .playwright-cli
 
 # generated at dev/build time from node_modules/typescript
-public/ts-libs-*.json
+apps/web/public/ts-libs-*.json

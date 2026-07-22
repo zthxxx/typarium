@@ -1,0 +1,36 @@
+{
+  "name": "@typarium/diagram-hasse",
+  "version": "0.1.0",
+  "description": "Layered Hasse order-diagram layout (deterministic, pure) + controlled React diagram component",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "typarium-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./src/styles.css"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@typarium/set-model": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@typarium/diagram-euler": "workspace:*",
+    "@types/react": "^19.2.0",
+    "react": "^19.2.0"
+  }
+}

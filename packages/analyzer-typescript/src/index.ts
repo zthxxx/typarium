@@ -1,0 +1,5 @@
+export { createTsAnalyzer } from './create-ts-analyzer.ts'
+export type { TsAnalyzer, TsAnalyzerOptions } from './create-ts-analyzer.ts'
+export { MAX_ENTITIES, scanExports } from './scan-exports.ts'
+export { createTypeAcquirer } from './type-acquisition.ts'
+export type { TypeAcquirer } from './type-acquisition.ts'

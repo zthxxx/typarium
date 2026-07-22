@@ -1,6 +1,6 @@
 name: Deploy Pages
 
-# Every push to main ships dist/client to GitHub Pages;
+# Every push to main ships apps/web/dist/client to GitHub Pages;
 # workflow_dispatch is kept for manual re-runs.
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/client
+          path: apps/web/dist/client
 
   deploy:
     needs: build

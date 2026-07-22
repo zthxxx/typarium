@@ -1,0 +1,37 @@
+/**
+ * Self-contained styles for the controlled HasseDiagram component.
+ * No host CSS framework assumed; the --set-hue-* palette variables
+ * are the override surface.
+ */
+
+.ty-hasse-edges {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ty-hasse-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-family: var(--ty-diagram-font, ui-monospace, monospace);
+  font-size: 14px;
+  font-weight: 700;
+  transition: opacity 0.2s;
+  text-shadow:
+    0 0 3px white,
+    0 1px 2px rgba(255, 255, 255, 0.95),
+    0 -1px 2px rgba(255, 255, 255, 0.95);
+}
+
+.ty-hasse-node-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+}

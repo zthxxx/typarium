@@ -1,0 +1,40 @@
+{
+  "name": "@typarium/language-adapter",
+  "version": "0.1.0",
+  "description": "LanguageAdapter contract (descriptor + analysis core + optional editor capabilities), the fake reference language, and the cross-adapter contract test kit",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "typarium-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract-tests": {
+      "typarium-source": "./src/adapter-contract.ts",
+      "types": "./dist/adapter-contract.d.ts",
+      "default": "./dist/adapter-contract.js"
+    }
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@typarium/set-model": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "vitest": "^4.1.5"
+  }
+}

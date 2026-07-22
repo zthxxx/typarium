@@ -8,29 +8,44 @@ decision records — check them before revisiting any settled choice.
 
 - `docs/` is the ONLY place written in Chinese. All code, comments,
   commit messages, and identifiers are engineering English.
-- Dependency direction: `core` ← `adapters` ← `services` ← `views`,
-  inward only. `core/` must not import adapters, services, views, or
-  the `typescript` package.
+- pnpm monorepo (ADR-0021), dependency direction enforced by the
+  package graph, inward only:
+  `@typarium/set-model` ← `diagram-euler` / `diagram-hasse` /
+  `language-adapter` ← `analyzer-typescript` ← `apps/web`.
+  Packages must not import app code; only `analyzer-typescript` may
+  import the `typescript` package. Language knowledge stays behind the
+  `LanguageAdapter` contract (descriptor + analysis core + optional
+  editor capabilities, ADR-0019) — views/services never hardcode TS
+  names or grammar.
 - The `typescript` dependency is pinned exact (6.0.3): the SINGLE
   TypeScript resource in the bundle (ADR-0015). One analysis worker
   powers canvas semantics AND editor diagnostics/hover/completions;
   monaco's embedded TS worker is never loaded — do not reintroduce it.
 - Visualization expresses CONTAINMENT ONLY (ADR-0012): rectangles nest
-  or sit apart, no partial-overlap geometry. The rect layout must stay
-  deterministic — same input, same output, zero randomness.
+  or sit apart, no partial-overlap geometry. Layouts stay deterministic
+  — same input, same output, zero randomness. Euler/Hasse choice is
+  app policy in VisualizationStore (ADR-0018), not a core concern.
+- The canvas never shows a result that was not true for its input:
+  cache-first boot snapshots are keyed by (engine, code, presets) and
+  re-verified by the live engine (ADR-0020).
 - Every commit passes: `pnpm check && pnpm lint && pnpm typecheck &&
 pnpm test`; run `pnpm test:e2e` for behavior-touching changes.
   Conventional commits enforced by commitlint (lowercase subject start).
 
-## Commands
+## Commands (root, delegate into apps/web)
 
-- `pnpm dev` (port 3000), `pnpm build` (static prerender → dist/client)
+- `pnpm dev` (port 3000), `pnpm build` (static prerender →
+  `apps/web/dist/client`), `pnpm build:packages` (dist + d.ts for the
+  publishable packages)
 - `pnpm test` / `pnpm test:e2e` / `pnpm typecheck` / `pnpm lint` / `pnpm check`
+- `pnpm perf:cold` — cold-start "time to usable" gauge (ADR-0020);
+  run against a fresh `pnpm build`
 
 ## E2E probe
 
-The app exposes `window.__typarium` ({ analysis, editor, viz }) for
-tests and debugging — assert on semantic state, not DOM internals.
+The app exposes `window.__typarium` ({ analysis, editor, presets, viz,
+boot }) for tests and debugging — assert on semantic state, not DOM
+internals. The probe is typed with the real service classes.
 
 ## Deploy
 

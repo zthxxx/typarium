@@ -11,6 +11,21 @@ Type `export type` declarations on the right; the diagram redraws 1.2s
 after you stop typing. Presets, shareable URLs (`Cmd/Ctrl+S`), zh/en
 locales, and IndexedDB persistence are built in.
 
+## Packages
+
+pnpm monorepo — the diagram and analysis capabilities are standalone
+packages, embeddable without the site (`apps/web`):
+
+- `@typarium/set-model` — the language-agnostic set-semantics IR,
+  relations algebra and canvas geometry contract
+- `@typarium/diagram-euler` / `@typarium/diagram-hasse` — deterministic
+  pure layouts + controlled React components (own CSS, palette by
+  `--set-hue-*` variables)
+- `@typarium/language-adapter` — the LanguageAdapter contract, a fake
+  reference language and the cross-adapter contract test suite
+- `@typarium/analyzer-typescript` — the TypeScript engine (checker
+  containment matrix with witness correction), node-usable
+
 ## Teaching demos (phase 1 acceptance)
 
 - Covariance: `Co<string>` nests inside `Co<string | number>`

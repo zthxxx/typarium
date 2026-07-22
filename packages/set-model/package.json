@@ -1,0 +1,25 @@
+{
+  "name": "@typarium/set-model",
+  "version": "0.1.0",
+  "description": "Language-agnostic set-semantics IR, relations algebra and the shared canvas geometry contract for typarium diagrams",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "typarium-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./palette.css": "./src/palette.css"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
+}
