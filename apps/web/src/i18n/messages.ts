@@ -14,13 +14,15 @@ const en = {
   'presets.title': 'Presets',
   'presets.snippets': 'Snippets',
   'mode.title': 'Diagram',
+  'mode.euler': 'Euler',
+  'mode.hasse': 'Hasse',
   'mode.infoAria': 'About diagram types',
   'mode.eulerUnavailable':
     'This containment structure cannot be drawn faithfully as nested rectangles',
   'mode.info.euler':
-    'nested rectangles: a set drawn INSIDE another IS its subset. Some containment graphs cannot be nested faithfully (e.g. one set inside three separate parents) — the canvas then switches to Hasse automatically.',
+    'represents sets as closed regions — containment and disjointness read directly from how regions nest or separate. Here it renders as nested rectangles: a set drawn INSIDE another IS its subset; structures that cannot nest faithfully (e.g. one set inside three separate parents) switch the canvas to Hasse automatically.',
   'mode.info.hasse':
-    'a layered order diagram: supersets sit above their subsets and every containment edge is drawn. It can represent ANY containment structure, trading away the direct inside-means-subset reading.',
+    'the compact drawing of a finite partially ordered set — elements sit in layers, only covering relations are drawn as edges, and the greater element sits above. Here supersets sit above subsets with every containment edge drawn, so any structure fits, trading away the inside-means-subset reading.',
   'mode.info.example':
     'The same input both ways: C1 contains C2 and C3; C2 and C3 are disjoint',
   'canvas.neverLegend': '∅ {name} = the empty set, inside every set',
@@ -62,12 +64,14 @@ const zh: Record<MessageKey, string> = {
   'presets.title': '预设类型',
   'presets.snippets': '代码模板',
   'mode.title': '图类型',
+  'mode.euler': '欧拉图',
+  'mode.hasse': '哈斯图',
   'mode.infoAria': '图类型说明',
   'mode.eulerUnavailable': '当前包含结构无法用嵌套矩形如实绘制',
   'mode.info.euler':
-    '嵌套矩形：画在另一个集合内部的集合就是它的子集。部分包含结构无法如实嵌套（例如一个集合同时属于三个互不包含的父集合），此时画布会自动切换到 Hasse 图。',
+    '用封闭区域表示集合的图示法，区域的嵌套与分离直接对应集合的包含与不相交。此处以嵌套矩形呈现：画在另一个集合内部的集合就是它的子集；无法如实嵌套的结构（例如一个集合同时属于三个互不包含的父集合）会自动切换到哈斯图。',
   'mode.info.hasse':
-    '分层的序图：父集合画在子集合上方，每一条包含关系都画成连线。它能表达任意包含结构，代价是失去「在内部即子集」的直观读法。',
+    '有限偏序集的简约图示法：元素分层排列，只把覆盖关系画成连线，较大的元素在上。此处父集合画在子集合上方、每条包含关系都有连线，能表达任意包含结构，代价是失去「在内部即子集」的直观读法。',
   'mode.info.example':
     '同一份输入的两种画法：C1 包含 C2 与 C3，C2 与 C3 无交集',
   'canvas.neverLegend': '∅ {name} = 空集，存在于任何集合之中',

@@ -83,7 +83,9 @@ export function computeHasseLayout(input: LayoutInput): HasseLayoutResult {
   // Isolated singletons — no containment edge in either direction —
   // leave the layered flow entirely: packing them into layer 0 widens
   // the top row and skews the connected diagram (product feedback).
-  // They render as a compact grid tucked into the top-right corner.
+  // They render as a near-square grid CENTERED beside the layered
+  // diagram (or alone in the canvas middle) — content gravitates to
+  // the visual center, never to a corner.
   const hasChildOf = new Set<EntityClass>()
   for (const cls of allClassesRaw) {
     for (const parent of parentsOf.get(cls) ?? []) hasChildOf.add(parent)
@@ -184,8 +186,10 @@ export function computeHasseLayout(input: LayoutInput): HasseLayoutResult {
   const width = Math.max(MIN_VIEWPORT.width, input.viewport.width)
   const height = Math.max(MIN_VIEWPORT.height, input.viewport.height)
 
-  // Isolated cluster geometry (computed first so the layered diagram
-  // can center within the remaining width).
+  // Isolated cluster: a near-square grid (portrait bias — vertical for
+  // a few nodes, rectangle for many) that sits BESIDE the layered
+  // diagram; the combined block centers in the canvas so content stays
+  // visually in the middle instead of drifting to a corner.
   const isolatedSorted = [...isolated].sort(
     (a, b) => a.orderIndex - b.orderIndex,
   )
@@ -199,15 +203,26 @@ export function computeHasseLayout(input: LayoutInput): HasseLayoutResult {
     ),
   )
   const isolatedColWidth = Math.max(0, ...isolatedWidths)
-  const isolatedCols = isolatedSorted.length > 5 ? 2 : 1
-  const isolatedRegionWidth =
-    isolatedSorted.length > 0
-      ? isolatedCols * isolatedColWidth +
-        (isolatedCols - 1) * HASSE_NODE_GAP +
-        CANVAS_PAD
+  const isolatedCount = isolatedSorted.length
+  const isolatedRows =
+    isolatedCount > 0 ? Math.ceil(Math.sqrt(isolatedCount)) : 0
+  const isolatedCols =
+    isolatedCount > 0 ? Math.ceil(isolatedCount / isolatedRows) : 0
+  const ISOLATED_ROW_GAP = 10
+  const isolatedGridWidth =
+    isolatedCols > 0
+      ? isolatedCols * isolatedColWidth + (isolatedCols - 1) * HASSE_NODE_GAP
       : 0
+  const isolatedGridHeight =
+    isolatedRows > 0
+      ? isolatedRows * HASSE_NODE_HEIGHT + (isolatedRows - 1) * ISOLATED_ROW_GAP
+      : 0
+  const BLOCK_GAP = HASSE_NODE_GAP * 2
   const hasLayered = planned.length > 0
-  const mainWidth = hasLayered ? width - isolatedRegionWidth : width
+  const mainWidth =
+    hasLayered && isolatedCount > 0
+      ? width - isolatedGridWidth - BLOCK_GAP
+      : width
 
   const layerCount = hasLayered
     ? Math.max(...planned.map((node) => node.layer)) + 1
@@ -231,6 +246,42 @@ export function computeHasseLayout(input: LayoutInput): HasseLayoutResult {
       Math.floor(mainWidth / 3),
     )
   }
+
+  // Pass one — per-layer widths and totals (order-independent), so the
+  // layered block's bounding width is known BEFORE placement and the
+  // combined [layered + isolated] block can center as one unit.
+  const available = mainWidth - CANVAS_PAD * 2
+  const layerScale: Array<number> = []
+  const layerTotal: Array<number> = []
+  for (let currentLayer = 0; currentLayer < layerCount; currentLayer += 1) {
+    const row = planned.filter((node) => node.layer === currentLayer)
+    const rawWidths = row.map((node) => nodeWidth(node.labels, node.kind))
+    const rawSum = rawWidths.reduce((sum, w) => sum + w, 0)
+    let scale = 1
+    if (rawSum + HASSE_NODE_GAP * (row.length - 1) > available) {
+      scale = Math.max(
+        0.35,
+        (available - HASSE_NODE_GAP * (row.length - 1)) / rawSum,
+      )
+      warnings.push(
+        `hasse layer ${currentLayer} exceeds the viewport width; node chips compressed`,
+      )
+    }
+    const widths = rawWidths.map((w) =>
+      scale === 1 ? w : Math.max(40, Math.floor(w * scale)),
+    )
+    layerScale.push(scale)
+    layerTotal.push(
+      widths.reduce((sum, w) => sum + w, 0) +
+        HASSE_NODE_GAP * (widths.length - 1),
+    )
+  }
+  const layeredBoundWidth = layerCount > 0 ? Math.max(...layerTotal) : 0
+  const combinedWidth =
+    layeredBoundWidth +
+    (hasLayered && isolatedCount > 0 ? BLOCK_GAP + isolatedGridWidth : 0)
+  const combinedLeft = Math.max(CANVAS_PAD, (width - combinedWidth) / 2)
+  const layeredCenterX = combinedLeft + layeredBoundWidth / 2
 
   const boxOf = new Map<string, Box>()
   const nodes: Array<HasseNode> = []
@@ -256,27 +307,13 @@ export function computeHasseLayout(input: LayoutInput): HasseLayoutResult {
         a.node.key.localeCompare(b.node.key),
     )
 
-    let widths = scored.map(({ node }) => nodeWidth(node.labels, node.kind))
-    let totalWidth =
-      widths.reduce((sum, w) => sum + w, 0) +
-      HASSE_NODE_GAP * (widths.length - 1)
-    const available = mainWidth - CANVAS_PAD * 2
-    if (totalWidth > available) {
-      const scale = Math.max(
-        0.35,
-        (available - HASSE_NODE_GAP * (widths.length - 1)) /
-          widths.reduce((sum, w) => sum + w, 0),
-      )
-      widths = widths.map((w) => Math.max(40, Math.floor(w * scale)))
-      totalWidth =
-        widths.reduce((sum, w) => sum + w, 0) +
-        HASSE_NODE_GAP * (widths.length - 1)
-      warnings.push(
-        `hasse layer ${currentLayer} exceeds the viewport width; node chips compressed`,
-      )
-    }
+    const scale = layerScale[currentLayer]
+    const widths = scored.map(({ node }) => {
+      const raw = nodeWidth(node.labels, node.kind)
+      return scale === 1 ? raw : Math.max(40, Math.floor(raw * scale))
+    })
 
-    let x = Math.max(CANVAS_PAD, (mainWidth - totalWidth) / 2)
+    let x = Math.max(CANVAS_PAD, layeredCenterX - layerTotal[currentLayer] / 2)
     const y = topY + currentLayer * layerStep
     scored.forEach(({ node }, index) => {
       const box: Box = {
@@ -299,24 +336,19 @@ export function computeHasseLayout(input: LayoutInput): HasseLayoutResult {
     })
   }
 
-  // Isolated cluster: compact wrap grid, top-right, declaration order.
-  if (isolatedSorted.length > 0) {
+  // Isolated grid placement: beside the layered block (vertically
+  // centered), or centered alone when nothing is layered.
+  if (isolatedCount > 0) {
     const gridLeft = hasLayered
-      ? width - CANVAS_PAD - (isolatedRegionWidth - CANVAS_PAD)
-      : Math.max(
-          CANVAS_PAD,
-          (width -
-            (isolatedCols * isolatedColWidth +
-              (isolatedCols - 1) * HASSE_NODE_GAP)) /
-            2,
-        )
-    const gridTop = CANVAS_PAD + 8
+      ? combinedLeft + layeredBoundWidth + BLOCK_GAP
+      : Math.max(CANVAS_PAD, (width - isolatedGridWidth) / 2)
+    const gridTop = Math.max(CANVAS_PAD, (height - isolatedGridHeight) / 2)
     isolatedSorted.forEach((cls, index) => {
       const col = index % isolatedCols
       const row = Math.floor(index / isolatedCols)
       const box: Box = {
         x: gridLeft + col * (isolatedColWidth + HASSE_NODE_GAP),
-        y: gridTop + row * (HASSE_NODE_HEIGHT + 10),
+        y: gridTop + row * (HASSE_NODE_HEIGHT + ISOLATED_ROW_GAP),
         width: isolatedWidths[index],
         height: HASSE_NODE_HEIGHT,
       }

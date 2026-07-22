@@ -359,3 +359,82 @@ describe('computeHasseLayout structure', () => {
     expect(second).toEqual(first)
   })
 })
+
+describe('isolated node placement', () => {
+  const unrelatedAll = (ids: Array<string>): Array<PairRelation> => {
+    const relations: Array<PairRelation> = []
+    for (let i = 0; i < ids.length; i += 1) {
+      for (let j = i + 1; j < ids.length; j += 1) {
+        relations.push(rel(ids[i], 'unrelated', ids[j]))
+      }
+    }
+    return relations
+  }
+
+  test('isolated-only: near-square grid centered in the canvas', () => {
+    const ids = ['A', 'B', 'C', 'D', 'E']
+    const layout = computeHasseLayout({
+      entities: ids.map((id) => entity(id)),
+      relations: unrelatedAll(ids),
+      viewport: VIEWPORT,
+    })
+    expect(layout.nodes).toHaveLength(5)
+    expect(layout.edges).toHaveLength(0)
+
+    // Near-square, portrait bias: 5 nodes -> 3 rows x 2 cols.
+    const rows = new Set(layout.nodes.map((node) => node.box.y)).size
+    const cols = new Set(layout.nodes.map((node) => node.box.x)).size
+    expect(rows).toBe(3)
+    expect(cols).toBe(2)
+
+    const left = Math.min(...layout.nodes.map((n) => n.box.x))
+    const right = Math.max(...layout.nodes.map((n) => n.box.x + n.box.width))
+    const top = Math.min(...layout.nodes.map((n) => n.box.y))
+    const bottom = Math.max(...layout.nodes.map((n) => n.box.y + n.box.height))
+    expect(Math.abs((left + right) / 2 - VIEWPORT.width / 2)).toBeLessThan(80)
+    expect(Math.abs((top + bottom) / 2 - VIEWPORT.height / 2)).toBeLessThan(60)
+  })
+
+  test('mixed: combined block centers, isolated grid sits beside the diagram', () => {
+    const layout = computeHasseLayout({
+      entities: [
+        entity('P'),
+        entity('S'),
+        entity('X'),
+        entity('Y'),
+        entity('Z'),
+      ],
+      relations: [
+        rel('S', 'subset', 'P'),
+        ...unrelatedAll(['X', 'Y', 'Z']).map((r) => r),
+        rel('P', 'unrelated', 'X'),
+        rel('P', 'unrelated', 'Y'),
+        rel('P', 'unrelated', 'Z'),
+        rel('S', 'unrelated', 'X'),
+        rel('S', 'unrelated', 'Y'),
+        rel('S', 'unrelated', 'Z'),
+      ],
+      viewport: VIEWPORT,
+    })
+    const byLabel = (label: string) =>
+      layout.nodes.find((node) => node.labels.includes(label))!
+    const layered = ['P', 'S'].map(byLabel)
+    const isolated = ['X', 'Y', 'Z'].map(byLabel)
+
+    // Isolated nodes sit to the RIGHT of the layered diagram, never in
+    // a detached corner: their grid is vertically centered.
+    const layeredRight = Math.max(...layered.map((n) => n.box.x + n.box.width))
+    for (const node of isolated) {
+      expect(node.box.x).toBeGreaterThan(layeredRight)
+    }
+    const top = Math.min(...isolated.map((n) => n.box.y))
+    const bottom = Math.max(...isolated.map((n) => n.box.y + n.box.height))
+    expect(Math.abs((top + bottom) / 2 - VIEWPORT.height / 2)).toBeLessThan(60)
+
+    // The COMBINED block (layered + grid) centers in the canvas.
+    const all = layout.nodes
+    const left = Math.min(...all.map((n) => n.box.x))
+    const right = Math.max(...all.map((n) => n.box.x + n.box.width))
+    expect(Math.abs((left + right) / 2 - VIEWPORT.width / 2)).toBeLessThan(120)
+  })
+})

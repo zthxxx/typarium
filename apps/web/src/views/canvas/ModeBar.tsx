@@ -1,4 +1,4 @@
-import { InformationCircleIcon } from '@heroicons/react/20/solid'
+import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import { observer } from 'mobx-react-lite'
 import { useRef, useState } from 'react'
 import { MIN_VIEWPORT } from '@typarium/set-model'
@@ -49,14 +49,14 @@ export const ModeBar = observer(function ModeBar() {
         className="flex gap-1.5"
       >
         <ModeRadio
-          label="Euler"
+          label={settings.t('mode.euler')}
           checked={viz.effectiveMode === 'euler'}
           disabled={!viz.eulerDrawable}
           disabledHint={settings.t('mode.eulerUnavailable')}
           onSelect={() => viz.chooseMode('euler')}
         />
         <ModeRadio
-          label="Hasse"
+          label={settings.t('mode.hasse')}
           checked={viz.effectiveMode === 'hasse'}
           disabled={false}
           onSelect={() => viz.chooseMode('hasse')}
@@ -67,16 +67,30 @@ export const ModeBar = observer(function ModeBar() {
         <Popup anchor={infoRef} placement="bottom-start" distance={10}>
           <div className="w-[480px] max-w-[92vw] rounded-xl border-2 border-(--color-ink) bg-white p-4 shadow-(--shadow-sticker)">
             <p className="mb-2 text-xs leading-relaxed">
-              <span className="font-mono font-bold">Euler</span> ·{' '}
-              {settings.t('mode.info.euler')}
+              <span className="font-mono font-bold">
+                {settings.t('mode.euler')}
+              </span>{' '}
+              · {settings.t('mode.info.euler')}
             </p>
             <p className="mb-3 text-xs leading-relaxed">
-              <span className="font-mono font-bold">Hasse</span> ·{' '}
-              {settings.t('mode.info.hasse')}
+              <span className="font-mono font-bold">
+                {settings.t('mode.hasse')}
+              </span>{' '}
+              · {settings.t('mode.info.hasse')}
             </p>
-            <div className="flex items-start justify-center gap-3">
-              <MiniDiagram kind="euler" />
-              <MiniDiagram kind="hasse" />
+            <div className="flex items-start justify-center gap-10">
+              <figure className="flex flex-col items-center gap-1.5">
+                <MiniDiagram kind="euler" />
+                <figcaption className="font-mono text-[11px] font-bold">
+                  {settings.t('mode.euler')}
+                </figcaption>
+              </figure>
+              <figure className="flex flex-col items-center gap-1.5">
+                <MiniDiagram kind="hasse" />
+                <figcaption className="font-mono text-[11px] font-bold">
+                  {settings.t('mode.hasse')}
+                </figcaption>
+              </figure>
             </div>
             <p className="mt-2 text-center font-mono text-[11px] text-(--color-ink-soft)">
               {settings.t('mode.info.example')}
