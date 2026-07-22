@@ -96,10 +96,8 @@ export const RectCanvas = observer(function RectCanvas() {
       {euler ? (
         <EulerDiagram
           layout={euler}
-          isDimmed={(entityIds) => viz.isDimmed(entityIds)}
-          isHighlighted={(entityIds) => viz.isHighlighted(entityIds)}
-          isPlaceholderDimmed={(key) => viz.isPlaceholderDimmed(key)}
-          isPlaceholderHighlighted={(key) => viz.isPlaceholderHighlighted(key)}
+          dimmedKeys={viz.dimmedKeys}
+          highlightedKeys={viz.highlightedKeys}
         />
       ) : null}
 

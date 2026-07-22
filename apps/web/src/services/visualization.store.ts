@@ -257,6 +257,62 @@ export class VisualizationStore {
   }
 
   /**
+   * Highlight state as PLAIN key sets over the current layout. The
+   * diagram components are deliberately store-free, so the observer
+   * container must READ these computeds during its own render and pass
+   * data down — predicate props evaluated inside a non-observer child
+   * would never subscribe, and caret-driven changes would go unseen
+   * (the exact regression this replaces).
+   */
+  get dimmedKeys(): ReadonlySet<string> {
+    const keys = new Set<string>()
+    const layout = this.layout
+    if (!layout || !this.hasActive) return keys
+    if (layout.mode === 'euler') {
+      for (const rect of layout.rects) {
+        if (this.isDimmed(rect.entityIds)) keys.add(rect.key)
+      }
+      for (const placeholder of layout.placeholders) {
+        if (this.isPlaceholderDimmed(placeholder.key)) keys.add(placeholder.key)
+      }
+    } else {
+      for (const node of layout.nodes) {
+        const dimmed =
+          node.kind === 'placeholder'
+            ? this.isPlaceholderDimmed(node.key)
+            : this.isDimmed(node.entityIds)
+        if (dimmed) keys.add(node.key)
+      }
+    }
+    return keys
+  }
+
+  get highlightedKeys(): ReadonlySet<string> {
+    const keys = new Set<string>()
+    const layout = this.layout
+    if (!layout || !this.hasActive) return keys
+    if (layout.mode === 'euler') {
+      for (const rect of layout.rects) {
+        if (this.isHighlighted(rect.entityIds)) keys.add(rect.key)
+      }
+      for (const placeholder of layout.placeholders) {
+        if (this.isPlaceholderHighlighted(placeholder.key)) {
+          keys.add(placeholder.key)
+        }
+      }
+    } else {
+      for (const node of layout.nodes) {
+        const highlighted =
+          node.kind === 'placeholder'
+            ? this.isPlaceholderHighlighted(node.key)
+            : this.isHighlighted(node.entityIds)
+        if (highlighted) keys.add(node.key)
+      }
+    }
+    return keys
+  }
+
+  /**
    * Declaration spans the editor highlights for the hovered class —
    * code-origin entities only (presets have nothing to highlight), and
    * hover only (the caret already lives in the editor).

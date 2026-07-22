@@ -35,11 +35,7 @@ export const HasseView = observer(function HasseView({
     <>
       <HasseDiagram
         layout={layout}
-        isNodeDimmed={(node) =>
-          node.kind === 'placeholder'
-            ? viz.isPlaceholderDimmed(node.key)
-            : viz.isDimmed(node.entityIds)
-        }
+        dimmedKeys={viz.dimmedKeys}
         onNodeEnter={(node, element) => {
           const rect = element.getBoundingClientRect()
           setHovered({

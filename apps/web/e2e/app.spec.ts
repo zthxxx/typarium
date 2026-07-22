@@ -354,3 +354,44 @@ test('canvas hover paints the export lines yellow in the editor', async ({
   await page.mouse.move(box!.x - 10, box!.y - 10)
   await expect.poll(() => page.locator('.canvas-hover-line').count()).toBe(0)
 })
+
+test('editor caret highlights its export on the canvas without any mouse', async ({
+  page,
+}) => {
+  await loadCode(page, 'export type One = "a"\n\nexport type Two = "b"')
+  // Drive the caret through the store (the monaco cursor event feeds
+  // the same call): the canvas must react with NO pointer involved —
+  // this is the reactivity chain a pure-component regression once cut.
+  await page.evaluate(() => {
+    window.__typarium!.viz.setCursorOffset(13)
+  })
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const rects = [
+            ...document.querySelectorAll<HTMLElement>('.ty-euler-rect'),
+          ]
+          return Object.fromEntries(
+            rects.map((rect) => [
+              rect.querySelector('span')?.textContent ?? '?',
+              rect.style.opacity || '1',
+            ]),
+          )
+        }),
+      { timeout: 10_000 },
+    )
+    .toEqual({ One: '1', Two: '0.3' })
+  await page.evaluate(() => {
+    window.__typarium!.viz.clearCursor()
+  })
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.querySelectorAll<HTMLElement>('.ty-euler-rect')[1].style
+            .opacity || '1',
+      ),
+    )
+    .toBe('1')
+})

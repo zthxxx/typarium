@@ -7,19 +7,19 @@ const HUE_COUNT = 12
 
 export interface EulerDiagramProps {
   layout: RectLayoutResult
-  /** Class-level dim/highlight predicates; both default to inert. */
-  isDimmed?: (entityIds: Array<string>) => boolean
-  isHighlighted?: (entityIds: Array<string>) => boolean
   /**
-   * Per-placeholder dim/highlight by key: a `???` block is a hover
-   * target of its own, so the host decides its state — it must be able
-   * to highlight while everything else dims.
+   * Highlight state as PLAIN DATA keyed by rect/placeholder key. The
+   * component subscribes to nothing — hosts with reactive stores must
+   * derive these sets where their reactivity system can see the reads
+   * and re-render with new props.
    */
-  isPlaceholderDimmed?: (key: string) => boolean
-  isPlaceholderHighlighted?: (key: string) => boolean
+  dimmedKeys?: ReadonlySet<string>
+  highlightedKeys?: ReadonlySet<string>
   /** Text inside the everything-else block; defaults to `???`. */
   placeholderLabel?: string
 }
+
+const EMPTY_KEYS: ReadonlySet<string> = new Set()
 
 /**
  * The Euler rectangle diagram as a CONTROLLED component: pure layout
@@ -29,10 +29,8 @@ export interface EulerDiagramProps {
  */
 export function EulerDiagram({
   layout,
-  isDimmed = () => false,
-  isHighlighted = () => false,
-  isPlaceholderDimmed = () => false,
-  isPlaceholderHighlighted = () => false,
+  dimmedKeys = EMPTY_KEYS,
+  highlightedKeys = EMPTY_KEYS,
   placeholderLabel = '???',
 }: EulerDiagramProps) {
   return (
@@ -40,8 +38,8 @@ export function EulerDiagram({
       {layout.rects.map((rect) => {
         const hue = rect.colorIndex % HUE_COUNT
         const rings = Math.max(0, rect.ringCount - 1)
-        const dimmed = isDimmed(rect.entityIds)
-        const highlighted = isHighlighted(rect.entityIds)
+        const dimmed = dimmedKeys.has(rect.key)
+        const highlighted = highlightedKeys.has(rect.key)
         return (
           <div
             key={rect.key}
@@ -94,8 +92,8 @@ export function EulerDiagram({
             top: placeholder.box.y,
             width: placeholder.box.width,
             height: placeholder.box.height,
-            opacity: isPlaceholderDimmed(placeholder.key) ? 0.3 : 1,
-            boxShadow: isPlaceholderHighlighted(placeholder.key)
+            opacity: dimmedKeys.has(placeholder.key) ? 0.3 : 1,
+            boxShadow: highlightedKeys.has(placeholder.key)
               ? '0 0 0 3px rgba(100, 106, 115, 0.25)'
               : undefined,
           }}

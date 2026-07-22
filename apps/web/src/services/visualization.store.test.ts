@@ -157,6 +157,46 @@ describe('VisualizationStore hover class', () => {
   })
 })
 
+describe('VisualizationStore highlight key sets', () => {
+  test('caret drives the plain-data key sets the diagrams render from', () => {
+    const { store } = makeStore({
+      entities: [
+        entity('A', { start: 0, end: 20 }),
+        entity('B', { start: 30, end: 50 }),
+      ],
+      relations: [{ a: 'A', b: 'B', kind: 'unrelated' }],
+      diagnostics: [],
+      anyEntityNames: [],
+    })
+    store.setViewport(800, 600)
+    store.setCursorOffset(10)
+    expect([...store.highlightedKeys]).toEqual(['A'])
+    expect(store.dimmedKeys.has('B')).toBe(true)
+    store.clearCursor()
+    expect(store.dimmedKeys.size).toBe(0)
+    expect(store.highlightedKeys.size).toBe(0)
+  })
+
+  test('placeholder hover marks its key highlighted, everything else dimmed', () => {
+    const { store } = makeStore({
+      entities: [entity('P', null), entity('S', null)],
+      relations: [{ a: 'S', b: 'P', kind: 'subset' }],
+      diagnostics: [],
+      anyEntityNames: [],
+    })
+    store.setViewport(800, 600)
+    const layout = store.layout
+    expect(layout?.mode).toBe('euler')
+    const placeholderKey =
+      layout?.mode === 'euler' ? layout.placeholders[0]?.key : undefined
+    expect(placeholderKey).toBeDefined()
+    store.hoverPlaceholder(placeholderKey!)
+    expect(store.highlightedKeys.has(placeholderKey!)).toBe(true)
+    expect(store.dimmedKeys.has('P')).toBe(true)
+    expect(store.dimmedKeys.has('S')).toBe(true)
+  })
+})
+
 describe('VisualizationStore diagram mode (ADR-0018)', () => {
   const drawable: AnalysisResult = {
     entities: [entity('A', null), entity('B', null)],

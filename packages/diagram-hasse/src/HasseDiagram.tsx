@@ -4,13 +4,15 @@ import './styles.css'
 
 const HUE_COUNT = 12
 
+const EMPTY_KEYS: ReadonlySet<string> = new Set()
+
 export interface HasseDiagramProps {
   layout: HasseLayoutResult
   /**
-   * Per-node dim predicate — receives the whole node so the host can
-   * treat `???` placeholder nodes as hover targets of their own.
+   * Dimmed nodes as PLAIN DATA by node key — same store-free contract
+   * as EulerDiagram: reactive hosts derive the set in their own render.
    */
-  isNodeDimmed?: (node: HasseNode) => boolean
+  dimmedKeys?: ReadonlySet<string>
   /**
    * Node hover callbacks with the DOM element as tooltip anchor; the
    * HOST renders any tooltip — the component stays chrome-free.
@@ -27,7 +29,7 @@ export interface HasseDiagramProps {
  */
 export function HasseDiagram({
   layout,
-  isNodeDimmed = () => false,
+  dimmedKeys = EMPTY_KEYS,
   onNodeEnter,
   onNodeLeave,
 }: HasseDiagramProps) {
@@ -68,7 +70,7 @@ export function HasseDiagram({
               color: placeholder
                 ? 'rgba(100, 106, 115, 0.75)'
                 : `var(--set-hue-${hue}-stroke)`,
-              opacity: isNodeDimmed(node) ? 0.3 : 1,
+              opacity: dimmedKeys.has(node.key) ? 0.3 : 1,
             }}
             onMouseEnter={(event) => onNodeEnter?.(node, event.currentTarget)}
             onMouseLeave={() => onNodeLeave?.(node)}
