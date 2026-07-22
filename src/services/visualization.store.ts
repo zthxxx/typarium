@@ -30,7 +30,13 @@ export class VisualizationStore {
   viewportHeight: number = MIN_VIEWPORT.height
 
   hoveredEntityId: string | null = null
-  cursorEntityId: string | null = null
+  /**
+   * Editor caret offset — the SOURCE value; the highlighted entity is
+   * derived from it. Storing the derived id instead caused a stale
+   * dim-state to survive the entity's deletion (analysis changed, the
+   * stored id never recomputed).
+   */
+  cursorOffset: number | null = null
 
   constructor(private readonly analysis: AnalysisService) {
     makeAutoObservable<VisualizationStore, 'analysis'>(this, {
@@ -91,20 +97,27 @@ export class VisualizationStore {
     this.hoveredEntityId = entityId
   }
 
-  /** Editor caret moved: highlight the enclosing exported type, if any. */
+  /** Editor caret moved: remember where it is. */
   setCursorOffset(offset: number): void {
+    this.cursorOffset = offset
+  }
+
+  /** Editor lost focus: no caret-driven highlight should remain. */
+  clearCursor(): void {
+    this.cursorOffset = null
+  }
+
+  /** The exported type enclosing the caret, recomputed per analysis. */
+  get cursorEntityId(): string | null {
+    if (this.cursorOffset === null) return null
+    const offset = this.cursorOffset
     const entity = this.entities.find(
       (candidate) =>
         candidate.declarationSpan !== null &&
         offset >= candidate.declarationSpan.start &&
         offset <= candidate.declarationSpan.end,
     )
-    this.cursorEntityId = entity?.id ?? null
-  }
-
-  /** Editor lost focus: no caret-driven highlight should remain. */
-  clearCursor(): void {
-    this.cursorEntityId = null
+    return entity?.id ?? null
   }
 
   get activeEntityId(): string | null {

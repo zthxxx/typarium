@@ -47,7 +47,7 @@ const PresetChip = observer(function PresetChip({
   // Keycap physics: raised when idle, pressed-in (down + no shadow)
   // once active — the chip IS the toggle state.
   const base =
-    'rounded-full border-2 px-3 py-1 font-mono text-xs font-bold transition-[transform,box-shadow,background-color,border-color]'
+    'rounded-full border-2 px-2.5 py-0.5 font-mono text-[11px] font-bold transition-[transform,box-shadow,background-color,border-color]'
   const palette = warning
     ? active
       ? 'translate-y-[2px] border-(--color-warn-any) bg-(--color-warn-any) text-white'
