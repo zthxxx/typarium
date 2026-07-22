@@ -1,24 +1,24 @@
 import { expect, test } from '@playwright/test'
 import lzString from 'lz-string'
 import type { Page } from '@playwright/test'
+import type { AnalysisService } from '#/services/analysis.service.ts'
+import type { EditorService } from '#/services/editor.service.ts'
+import type { PresetService } from '#/services/preset.service.ts'
+import type { VisualizationStore } from '#/services/visualization.store.ts'
 
 /**
  * E2E regression for the rectangle-paradigm MVP. The app exposes its
  * services on `window.__typarium` (composition-root probe) so tests can
  * assert on semantic state without coupling to DOM internals.
+ * The probe shape is the REAL service types (type-only imports, erased
+ * at runtime) — drift between tests and services is a compile error.
  */
 
 interface TypariumProbe {
-  editor: { code: string; replaceCode: (code: string) => void }
-  presets: { activeLabels: Array<string> }
-  analysis: {
-    lastGoodResult: {
-      entities: Array<{ id: string; name: string }>
-      relations: Array<{ a: string; b: string; kind: string }>
-      anyEntityNames: Array<string>
-    } | null
-    quickInfo: (source: string, offset: number) => Promise<string | null>
-  }
+  editor: EditorService
+  presets: PresetService
+  analysis: AnalysisService
+  viz: VisualizationStore
 }
 
 declare global {
