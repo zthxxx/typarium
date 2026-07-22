@@ -4,10 +4,9 @@ import { BootService } from '#/services/boot.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { VisualizationStore } from '#/services/visualization.store.ts'
 import { useService } from '#/views/di.tsx'
-import { RING_INSET } from '#/core/layout/constants.ts'
 import { HasseView } from '#/views/canvas/HasseView.tsx'
+import { EulerDiagram } from '#/views/diagram/EulerDiagram.tsx'
 import { Popup } from '#/views/floating/Popup.tsx'
-import type { EntityRect } from '#/core/layout/types.ts'
 import type { RefObject } from 'react'
 import type { TooltipStack } from '#/services/visualization.store.ts'
 
@@ -84,55 +83,13 @@ export const RectCanvas = observer(function RectCanvas() {
         </span>
       ) : null}
 
-      {euler?.rects.map((rect) => (
-        <RectView
-          key={rect.key}
-          rect={rect}
-          dimmed={viz.isDimmed(rect.entityIds)}
-          highlighted={viz.isHighlighted(rect.entityIds)}
+      {euler ? (
+        <EulerDiagram
+          layout={euler}
+          isDimmed={(entityIds) => viz.isDimmed(entityIds)}
+          isHighlighted={(entityIds) => viz.isHighlighted(entityIds)}
         />
-      ))}
-
-      {euler?.placeholders.map((placeholder) => (
-        <div
-          key={placeholder.key}
-          className="absolute rounded-xl font-mono transition-opacity duration-200"
-          style={{
-            left: placeholder.box.x,
-            top: placeholder.box.y,
-            width: placeholder.box.width,
-            height: placeholder.box.height,
-            background: 'rgba(143, 149, 158, 0.08)',
-            // The ??? hint dims together with non-highlighted entities.
-            opacity: viz.hasActiveEntity ? 0.3 : 1,
-          }}
-        >
-          {/* SVG stroke instead of CSS dashed: dash gap is tunable —
-              product rule wants twice the default spacing. */}
-          <svg
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full"
-          >
-            <rect
-              x="1"
-              y="1"
-              width="calc(100% - 2px)"
-              height="calc(100% - 2px)"
-              rx="11"
-              fill="none"
-              stroke="rgba(100, 106, 115, 0.55)"
-              strokeWidth="2"
-              strokeDasharray="8 12"
-            />
-          </svg>
-          <span
-            className="absolute top-1 left-2.5 text-sm font-bold"
-            style={{ color: 'rgba(100, 106, 115, 0.75)' }}
-          >
-            ???
-          </span>
-        </div>
-      ))}
+      ) : null}
 
       {neverActive ? <NeverLegend /> : null}
 
@@ -200,68 +157,6 @@ const BootOverlay = observer(function BootOverlay() {
           {settings.t(BOOT_STAGE_KEYS[stage])}
         </p>
       ) : null}
-    </div>
-  )
-})
-
-/**
- * One containment rectangle. Equivalence classes render as stacked
- * rings: each extra member adds an inset border of the same hue.
- */
-const RectView = observer(function RectView({
-  rect,
-  dimmed,
-  highlighted,
-}: {
-  rect: EntityRect
-  dimmed: boolean
-  highlighted: boolean
-}) {
-  const hue = rect.colorIndex % HUE_COUNT
-  const rings = Math.max(0, rect.ringCount - 1)
-
-  return (
-    <div
-      className="absolute rounded-xl transition-[opacity,box-shadow] duration-200"
-      style={{
-        left: rect.outer.x,
-        top: rect.outer.y,
-        width: rect.outer.width,
-        height: rect.outer.height,
-        border: `3px solid var(--set-hue-${hue}-stroke)`,
-        background: `var(--set-hue-${hue}-fill)`,
-        opacity: dimmed ? 0.3 : 1,
-        boxShadow: highlighted
-          ? `0 0 0 3px color-mix(in srgb, var(--set-hue-${hue}-stroke) 35%, transparent)`
-          : undefined,
-      }}
-    >
-      {Array.from({ length: rings }, (_, index) => (
-        <div
-          key={index}
-          className="pointer-events-none absolute rounded-lg"
-          style={{
-            inset: (index + 1) * RING_INSET,
-            border: `2.5px solid var(--set-hue-${hue}-stroke)`,
-          }}
-        />
-      ))}
-      <span
-        className="absolute max-w-[calc(100%-20px)] truncate font-mono text-sm font-bold"
-        style={{
-          // Sit inside the innermost equivalence ring so stacked ring
-          // borders never run through the text.
-          top: rings * RING_INSET + 3,
-          left: rings * RING_INSET + 10,
-          color: `var(--set-hue-${hue}-stroke)`,
-          // Soft white halo: keeps the label legible when equivalence
-          // rings stack borders right behind the text.
-          textShadow:
-            '0 0 3px white, 0 0 3px white, 0 1px 2px rgba(255,255,255,0.95), 0 -1px 2px rgba(255,255,255,0.95)',
-        }}
-      >
-        {rect.labels.join(' ≡ ')}
-      </span>
     </div>
   )
 })

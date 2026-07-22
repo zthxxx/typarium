@@ -4,6 +4,8 @@ import { useRef, useState } from 'react'
 import { MIN_VIEWPORT } from '#/core/layout/constants.ts'
 import { computeHasseLayout, computeRectLayout } from '#/core/layout/index.ts'
 import { SettingsService } from '#/services/settings.service.ts'
+import { EulerDiagram } from '#/views/diagram/EulerDiagram.tsx'
+import { HasseDiagram } from '#/views/diagram/HasseDiagram.tsx'
 import { VisualizationStore } from '#/services/visualization.store.ts'
 import { Popup } from '#/views/floating/Popup.tsx'
 import { useService } from '#/views/di.tsx'
@@ -13,8 +15,6 @@ import type {
   RectLayoutResult,
 } from '#/core/layout/types.ts'
 import type { PairRelation, TypeEntity } from '#/core/set-model/types.ts'
-
-const HUE_COUNT = 12
 
 /**
  * Diagram-mode selector (ADR-0018): Euler / Hasse radio row between
@@ -178,110 +178,12 @@ function MiniDiagram({ kind }: { kind: DiagramMode }) {
           height: MIN_VIEWPORT.height,
         }}
       >
-        {kind === 'euler' ? <MiniEuler /> : <MiniHasse />}
+        {kind === 'euler' ? (
+          <EulerDiagram layout={DEMO_EULER} />
+        ) : (
+          <HasseDiagram layout={DEMO_HASSE} />
+        )}
       </div>
     </div>
-  )
-}
-
-function MiniEuler() {
-  return (
-    <>
-      {DEMO_EULER.rects.map((rect) => {
-        const hue = rect.colorIndex % HUE_COUNT
-        return (
-          <div
-            key={rect.key}
-            className="absolute rounded-xl"
-            style={{
-              left: rect.outer.x,
-              top: rect.outer.y,
-              width: rect.outer.width,
-              height: rect.outer.height,
-              border: `3px solid var(--set-hue-${hue}-stroke)`,
-              background: `var(--set-hue-${hue}-fill)`,
-            }}
-          >
-            <span
-              className="absolute top-1 left-2.5 font-mono text-sm font-bold"
-              style={{ color: `var(--set-hue-${hue}-stroke)` }}
-            >
-              {rect.labels.join(' ≡ ')}
-            </span>
-          </div>
-        )
-      })}
-      {DEMO_EULER.placeholders.map((placeholder) => (
-        <div
-          key={placeholder.key}
-          className="absolute rounded-xl border-2 border-dashed"
-          style={{
-            left: placeholder.box.x,
-            top: placeholder.box.y,
-            width: placeholder.box.width,
-            height: placeholder.box.height,
-            borderColor: 'rgba(100, 106, 115, 0.55)',
-            background: 'rgba(143, 149, 158, 0.08)',
-          }}
-        >
-          <span
-            className="absolute top-1 left-2.5 text-sm font-bold"
-            style={{ color: 'rgba(100, 106, 115, 0.75)' }}
-          >
-            ???
-          </span>
-        </div>
-      ))}
-    </>
-  )
-}
-
-function MiniHasse() {
-  return (
-    <>
-      <svg
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 h-full w-full"
-      >
-        {DEMO_HASSE.edges.map((edge) => (
-          <line
-            key={`${edge.from}->${edge.to}`}
-            x1={edge.x1}
-            y1={edge.y1}
-            x2={edge.x2}
-            y2={edge.y2}
-            stroke="rgba(100, 106, 115, 0.5)"
-            strokeWidth="1.5"
-          />
-        ))}
-      </svg>
-      {DEMO_HASSE.nodes.map((node) => {
-        const hue = (node.colorIndex ?? 0) % HUE_COUNT
-        const placeholder = node.kind === 'placeholder'
-        return (
-          <div
-            key={node.key}
-            className="absolute flex items-center justify-center rounded-xl font-mono text-sm font-bold"
-            style={{
-              left: node.box.x,
-              top: node.box.y,
-              width: node.box.width,
-              height: node.box.height,
-              border: placeholder
-                ? '2px dashed rgba(100, 106, 115, 0.55)'
-                : `3px solid var(--set-hue-${hue}-stroke)`,
-              background: placeholder
-                ? 'rgba(143, 149, 158, 0.08)'
-                : `var(--set-hue-${hue}-fill)`,
-              color: placeholder
-                ? 'rgba(100, 106, 115, 0.75)'
-                : `var(--set-hue-${hue}-stroke)`,
-            }}
-          >
-            {node.labels.join(' ≡ ')}
-          </div>
-        )
-      })}
-    </>
   )
 }
