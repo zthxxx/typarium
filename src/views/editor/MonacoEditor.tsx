@@ -195,6 +195,37 @@ export const MonacoEditor = observer(function MonacoEditor() {
     })
   }, [settings])
 
+  // Canvas hover → editor highlight: every exported declaration in the
+  // hovered equivalence class gets a whole-line yellow background (one
+  // hovered rect may equal SEVERAL exports).
+  const hoverCollection =
+    useRef<Monaco.editor.IEditorDecorationsCollection | null>(null)
+  useEffect(() => {
+    return autorun(() => {
+      const spans = viz.editorHighlightSpans
+      const monaco = monacoRef.current
+      const editor = editorRef.current
+      const model = editor?.getModel()
+      if (!monaco || !editor || !model) return
+      hoverCollection.current ??= editor.createDecorationsCollection()
+      hoverCollection.current.set(
+        spans.map((span) => {
+          const start = model.getPositionAt(span.start)
+          const end = model.getPositionAt(span.end)
+          return {
+            range: new monaco.Range(
+              start.lineNumber,
+              1,
+              end.lineNumber,
+              model.getLineMaxColumn(end.lineNumber),
+            ),
+            options: { isWholeLine: true, className: 'canvas-hover-line' },
+          }
+        }),
+      )
+    })
+  }, [viz])
+
   // Diagnostics markers: the fast check pass streams into monaco.
   useEffect(() => {
     return autorun(() => {

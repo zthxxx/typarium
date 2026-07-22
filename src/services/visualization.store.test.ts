@@ -76,7 +76,135 @@ describe('VisualizationStore caret highlight', () => {
     store.setCursorOffset(10)
     store.clearCursor()
     expect(store.cursorEntityId).toBeNull()
-    expect(store.activeEntityId).toBeNull()
+    expect(store.activeEntityIds).toEqual([])
+  })
+})
+
+describe('VisualizationStore hover class', () => {
+  const equalPair: AnalysisResult = {
+    entities: [
+      entity('A', { start: 0, end: 20 }),
+      entity('B', { start: 30, end: 50 }),
+      { ...entity('P', null), origin: 'preset' },
+    ],
+    relations: [
+      { a: 'A', b: 'B', kind: 'equivalent' },
+      { a: 'A', b: 'P', kind: 'unrelated' },
+      { a: 'B', b: 'P', kind: 'unrelated' },
+    ],
+    diagnostics: [],
+    anyEntityNames: [],
+  }
+
+  test('hovering a class highlights every member and dims the rest', () => {
+    const { store } = makeStore(equalPair)
+    store.hoverClass(['A', 'B'])
+    expect(store.isHighlighted(['A'])).toBe(true)
+    expect(store.isHighlighted(['B'])).toBe(true)
+    expect(store.isDimmed(['P'])).toBe(true)
+    store.hoverClass(null)
+    expect(store.hasActiveEntity).toBe(false)
+  })
+
+  test('editor spans cover every code-origin member of the hovered class', () => {
+    const { store } = makeStore(equalPair)
+    store.hoverClass(['A', 'B', 'P'])
+    // P is a preset: nothing to highlight in the editor for it.
+    expect(store.editorHighlightSpans).toEqual([
+      { start: 0, end: 20 },
+      { start: 30, end: 50 },
+    ])
+  })
+
+  test('caret highlight never drives editor spans (hover only)', () => {
+    const { store } = makeStore(equalPair)
+    store.setCursorOffset(10)
+    expect(store.activeEntityIds).toEqual(['A'])
+    expect(store.editorHighlightSpans).toEqual([])
+  })
+})
+
+describe('VisualizationStore diagram mode (ADR-0018)', () => {
+  const drawable: AnalysisResult = {
+    entities: [entity('A', null), entity('B', null)],
+    relations: [{ a: 'B', b: 'A', kind: 'subset' }],
+    diagnostics: [],
+    anyEntityNames: [],
+  }
+  // D sits inside three mutually-unrelated parents: rectangles cannot
+  // nest that faithfully, so Euler is undrawable.
+  const undrawable: AnalysisResult = {
+    entities: [
+      entity('A', null),
+      entity('B', null),
+      entity('C', null),
+      entity('D', null),
+    ],
+    relations: [
+      { a: 'A', b: 'B', kind: 'unrelated' },
+      { a: 'A', b: 'C', kind: 'unrelated' },
+      { a: 'B', b: 'C', kind: 'unrelated' },
+      { a: 'D', b: 'A', kind: 'subset' },
+      { a: 'D', b: 'B', kind: 'subset' },
+      { a: 'D', b: 'C', kind: 'subset' },
+    ],
+    diagnostics: [],
+    anyEntityNames: [],
+  }
+
+  test('never chose → euler while drawable', () => {
+    const { store } = makeStore(drawable)
+    expect(store.eulerDrawable).toBe(true)
+    expect(store.effectiveMode).toBe('euler')
+    expect(store.layout?.mode).toBe('euler')
+  })
+
+  test('undrawable input forces hasse and flags euler unavailable', () => {
+    const { store } = makeStore(undrawable)
+    expect(store.eulerDrawable).toBe(false)
+    expect(store.effectiveMode).toBe('hasse')
+    expect(store.layout?.mode).toBe('hasse')
+    expect(
+      store.layout?.warnings.some((warning) =>
+        warning.includes('hasse fallback'),
+      ),
+    ).toBe(true)
+  })
+
+  test('euler returns automatically when drawable again, unless hasse was pinned', () => {
+    const { analysis, store } = makeStore(undrawable)
+    expect(store.effectiveMode).toBe('hasse')
+    // The user never chose: back to euler when the code allows it.
+    runInAction(() => {
+      analysis.lastGoodResult = drawable
+    })
+    expect(store.effectiveMode).toBe('euler')
+
+    // Explicit euler choice behaves the same through a fallback cycle.
+    store.chooseMode('euler')
+    runInAction(() => {
+      analysis.lastGoodResult = undrawable
+    })
+    expect(store.effectiveMode).toBe('hasse')
+    runInAction(() => {
+      analysis.lastGoodResult = drawable
+    })
+    expect(store.effectiveMode).toBe('euler')
+
+    // A manual hasse pin sticks even when euler becomes drawable.
+    store.chooseMode('hasse')
+    expect(store.effectiveMode).toBe('hasse')
+    expect(store.layout?.mode).toBe('hasse')
+    runInAction(() => {
+      analysis.lastGoodResult = undrawable
+    })
+    runInAction(() => {
+      analysis.lastGoodResult = drawable
+    })
+    expect(store.effectiveMode).toBe('hasse')
+    // Choosing euler releases the pin.
+    store.chooseMode('euler')
+    expect(store.effectiveMode).toBe('euler')
   })
 })
 

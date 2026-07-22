@@ -1,4 +1,3 @@
-export { computeCanvasLayout } from '#/core/layout/canvas-layout.ts'
 export { computeHasseLayout } from '#/core/layout/hasse-layout.ts'
 export {
   computeRectLayout,

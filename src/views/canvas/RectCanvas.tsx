@@ -61,12 +61,14 @@ export const RectCanvas = observer(function RectCanvas() {
         const y = event.clientY - bounds.top
         setPointer({ x, y })
         setStack(viz.stackAt(x, y))
-        viz.hoverEntity(viz.rectAt(x, y)?.entityIds[0] ?? null)
+        // The whole equivalence class of the innermost rect: hover may
+        // correspond to SEVERAL equal exports in the editor.
+        viz.hoverClass(viz.rectAt(x, y)?.entityIds ?? null)
       }}
       onMouseLeave={() => {
         setPointer(null)
         setStack(null)
-        viz.hoverEntity(null)
+        viz.hoverClass(null)
       }}
     >
       {universeActive ? (
@@ -84,14 +86,8 @@ export const RectCanvas = observer(function RectCanvas() {
         <RectView
           key={rect.key}
           rect={rect}
-          dimmed={
-            viz.activeEntityId !== null &&
-            !rect.entityIds.includes(viz.activeEntityId)
-          }
-          highlighted={
-            viz.activeEntityId !== null &&
-            rect.entityIds.includes(viz.activeEntityId)
-          }
+          dimmed={viz.isDimmed(rect.entityIds)}
+          highlighted={viz.isHighlighted(rect.entityIds)}
         />
       ))}
 
@@ -106,7 +102,7 @@ export const RectCanvas = observer(function RectCanvas() {
             height: placeholder.box.height,
             background: 'rgba(143, 149, 158, 0.08)',
             // The ??? hint dims together with non-highlighted entities.
-            opacity: viz.activeEntityId !== null ? 0.3 : 1,
+            opacity: viz.hasActiveEntity ? 0.3 : 1,
           }}
         >
           {/* SVG stroke instead of CSS dashed: dash gap is tunable —

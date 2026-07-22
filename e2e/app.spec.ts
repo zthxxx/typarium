@@ -274,3 +274,63 @@ test('editor hover quick info comes from the single worker', async ({
   })
   expect(info).toContain('Foo')
 })
+
+test('diagram mode: euler by default, hasse pin sticks, auto-return without pin', async ({
+  page,
+}) => {
+  const euler = page.getByRole('radio', { name: 'Euler' })
+  const hasse = page.getByRole('radio', { name: 'Hasse' })
+  await expect(euler).toBeChecked()
+
+  // D inside three mutually-unrelated parents: rectangles cannot nest
+  // this faithfully — euler disables itself and hasse takes over.
+  const undrawable = [
+    'export type A = { a: string }',
+    'export type B = { b: string }',
+    'export type C = { c: string }',
+    'export type D = { a: string; b: string; c: string }',
+  ].join('\n')
+  await loadCode(page, undrawable, 'D')
+  await expect(euler).toBeDisabled()
+  await expect(hasse).toBeChecked()
+
+  // Back to drawable code with no manual choice: euler returns.
+  await loadCode(page, 'export type Solo = string')
+  await expect(euler).toBeChecked()
+  await expect(euler).toBeEnabled()
+
+  // Manual hasse pin survives content changes in both directions.
+  await hasse.click()
+  await expect(hasse).toBeChecked()
+  await loadCode(page, 'export type Other = number')
+  await expect(hasse).toBeChecked()
+  const mode = await page.evaluate(() => window.__typarium!.viz.layout?.mode)
+  expect(mode).toBe('hasse')
+
+  // Choosing euler releases the pin.
+  await euler.click()
+  await expect(euler).toBeChecked()
+})
+
+test('canvas hover paints the export lines yellow in the editor', async ({
+  page,
+}) => {
+  await loadCode(page, 'export type Foo = "foo" | "bar"')
+  const point = await page.evaluate(() => {
+    const layout = window.__typarium!.viz.layout
+    if (!layout || layout.mode !== 'euler') return null
+    const rect = layout.rects[0]
+    return { x: rect.outer.x + rect.outer.width / 2, y: rect.outer.y + 12 }
+  })
+  expect(point).not.toBeNull()
+  const box = await page.getByTestId('rect-canvas').boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.move(box!.x + point!.x, box!.y + point!.y)
+  await expect
+    .poll(() => page.locator('.canvas-hover-line').count())
+    .toBeGreaterThan(0)
+
+  // Leaving the canvas clears the editor highlight again.
+  await page.mouse.move(box!.x - 10, box!.y - 10)
+  await expect.poll(() => page.locator('.canvas-hover-line').count()).toBe(0)
+})

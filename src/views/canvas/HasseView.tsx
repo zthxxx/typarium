@@ -52,11 +52,8 @@ export const HasseView = observer(function HasseView({
             .map((id) => byId.get(id))
             .filter((entity): entity is TypeEntity => Boolean(entity))}
           otherText={settings.t('canvas.otherTypes')}
-          dimmed={
-            viz.activeEntityId !== null &&
-            !node.entityIds.includes(viz.activeEntityId)
-          }
-          onHover={(id) => viz.hoverEntity(id)}
+          dimmed={viz.isDimmed(node.entityIds)}
+          onHover={(entityIds) => viz.hoverClass(entityIds)}
         />
       ))}
     </>
@@ -74,7 +71,7 @@ const HasseNodeChip = observer(function HasseNodeChip({
   entities: Array<TypeEntity>
   otherText: string
   dimmed: boolean
-  onHover: (id: string | null) => void
+  onHover: (entityIds: Array<string> | null) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [anchor, setAnchor] = useState<{
@@ -117,7 +114,7 @@ const HasseNodeChip = observer(function HasseNodeChip({
             width: rect.width,
             height: rect.height,
           })
-          if (node.entityIds.length > 0) onHover(node.entityIds[0])
+          if (node.entityIds.length > 0) onHover(node.entityIds)
         }}
         onMouseLeave={() => {
           setHovered(false)

@@ -1,10 +1,21 @@
 import { computed, makeAutoObservable } from 'mobx'
-import { computeCanvasLayout } from '#/core/layout/index.ts'
+import {
+  computeHasseLayout,
+  computeRectLayout,
+  probeRectFaithfulness,
+} from '#/core/layout/index.ts'
 import { MIN_VIEWPORT } from '#/core/layout/constants.ts'
 import type { SpecialTypeNames } from '#/core/analysis/adapter.ts'
-import type { Box, CanvasLayout, EntityRect } from '#/core/layout/types.ts'
+import type {
+  Box,
+  CanvasLayout,
+  EntityRect,
+  RectLayoutInput,
+} from '#/core/layout/types.ts'
 import type { AnalysisService } from '#/services/analysis.service.ts'
-import type { TypeEntity } from '#/core/set-model/types.ts'
+import type { SourceSpan, TypeEntity } from '#/core/set-model/types.ts'
+
+export type DiagramMode = 'euler' | 'hasse'
 
 export interface TooltipItem {
   name: string
@@ -21,16 +32,31 @@ export interface TooltipStack {
 }
 
 /**
- * Presentation state for the rectangle canvas: derived layout (a pure
- * function of the last good analysis and the measured viewport) plus
- * hover/caret highlight shared between editor and canvas.
+ * Presentation state for the canvas: diagram-mode policy (ADR-0018),
+ * derived layout (a pure function of the last good analysis and the
+ * measured viewport) plus hover/caret highlight shared between editor
+ * and canvas.
  */
 export class VisualizationStore {
   /** Measured canvas size, driven by the view's ResizeObserver. */
   viewportWidth: number = MIN_VIEWPORT.width
   viewportHeight: number = MIN_VIEWPORT.height
 
-  hoveredEntityId: string | null = null
+  /**
+   * The user's explicit diagram-mode choice; null = never chose.
+   * Policy (ADR-0018): Euler by default, automatic Hasse fallback when
+   * Euler cannot draw faithfully, automatic return to Euler when it
+   * can again — UNLESS the user pinned Hasse by hand.
+   */
+  userMode: DiagramMode | null = null
+
+  /**
+   * Equivalence class under the pointer (every entity of the hovered
+   * rect/node) — hover semantics are class-level, so one hover can
+   * highlight several equal exports in the editor at once.
+   */
+  hoveredEntityIds: Array<string> = []
+
   /**
    * Editor caret offset — the SOURCE value; the highlighted entity is
    * derived from it. Storing the derived id instead caused a stale
@@ -76,14 +102,56 @@ export class VisualizationStore {
     return this.entities.filter((entity) => entity.special === 'empty')
   }
 
-  get layout(): CanvasLayout | null {
+  private get layoutInput(): RectLayoutInput | null {
     const result = this.analysis.lastGoodResult
     if (!result) return null
-    return computeCanvasLayout({
+    return {
       entities: result.entities,
       relations: result.relations,
       viewport: { width: this.viewportWidth, height: this.viewportHeight },
-    })
+    }
+  }
+
+  /** Every place the rectangle paradigm would drop a containment edge. */
+  get eulerViolations(): Array<string> {
+    const input = this.layoutInput
+    if (!input) return []
+    return probeRectFaithfulness(input)
+  }
+
+  /** Whether Euler can draw the current containment DAG faithfully. */
+  get eulerDrawable(): boolean {
+    return this.eulerViolations.length === 0
+  }
+
+  /** The mode actually rendered: user intent bounded by drawability. */
+  get effectiveMode(): DiagramMode {
+    if (this.userMode === 'hasse') return 'hasse'
+    return this.eulerDrawable ? 'euler' : 'hasse'
+  }
+
+  /** Radio click. Selecting Euler releases a manual Hasse pin. */
+  chooseMode(mode: DiagramMode): void {
+    this.userMode = mode
+  }
+
+  get layout(): CanvasLayout | null {
+    const input = this.layoutInput
+    if (!input) return null
+    if (this.effectiveMode === 'euler') {
+      return { mode: 'euler', ...computeRectLayout(input) }
+    }
+    const hasse = computeHasseLayout(input)
+    return {
+      mode: 'hasse',
+      ...hasse,
+      warnings: [
+        ...this.eulerViolations.map(
+          (violation) => `hasse fallback: ${violation}`,
+        ),
+        ...hasse.warnings,
+      ],
+    }
   }
 
   get neverDisplayed(): boolean {
@@ -99,8 +167,9 @@ export class VisualizationStore {
       .filter((name): name is string => Boolean(name))
   }
 
-  hoverEntity(entityId: string | null): void {
-    this.hoveredEntityId = entityId
+  /** Canvas hover: the full equivalence class of the hit rect/node. */
+  hoverClass(entityIds: Array<string> | null): void {
+    this.hoveredEntityIds = entityIds ?? []
   }
 
   /** Editor caret moved: remember where it is. */
@@ -126,8 +195,46 @@ export class VisualizationStore {
     return entity?.id ?? null
   }
 
-  get activeEntityId(): string | null {
-    return this.hoveredEntityId ?? this.cursorEntityId
+  /** Ids driving highlight/dim; hover wins over the caret. */
+  get activeEntityIds(): Array<string> {
+    if (this.hoveredEntityIds.length > 0) return this.hoveredEntityIds
+    return this.cursorEntityId === null ? [] : [this.cursorEntityId]
+  }
+
+  get hasActiveEntity(): boolean {
+    return this.activeEntityIds.length > 0
+  }
+
+  /** A rect/node lights up when it shares an entity with the active class. */
+  isHighlighted(entityIds: Array<string>): boolean {
+    return (
+      this.hasActiveEntity &&
+      entityIds.some((id) => this.activeEntityIds.includes(id))
+    )
+  }
+
+  /** Everything not highlighted dims while something is active. */
+  isDimmed(entityIds: Array<string>): boolean {
+    return this.hasActiveEntity && !this.isHighlighted(entityIds)
+  }
+
+  /**
+   * Declaration spans the editor highlights for the hovered class —
+   * code-origin entities only (presets have nothing to highlight), and
+   * hover only (the caret already lives in the editor).
+   */
+  get editorHighlightSpans(): Array<SourceSpan> {
+    if (this.hoveredEntityIds.length === 0) return []
+    const byId = new Map(this.entities.map((entity) => [entity.id, entity]))
+    return this.hoveredEntityIds
+      .map((id) => byId.get(id))
+      .filter(
+        (entity): entity is TypeEntity =>
+          entity !== undefined &&
+          entity.origin === 'code' &&
+          entity.declarationSpan !== null,
+      )
+      .map((entity) => entity.declarationSpan as SourceSpan)
   }
 
   /**

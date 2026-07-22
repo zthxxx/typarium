@@ -1,7 +1,15 @@
 import { describe, expect, test } from 'vitest'
-import { computeCanvasLayout } from '#/core/layout/canvas-layout.ts'
-import { computeRectLayout } from '#/core/layout/rect-layout.ts'
-import type { HasseLayoutResult, HasseNode } from '#/core/layout/types.ts'
+import { computeHasseLayout } from '#/core/layout/hasse-layout.ts'
+import {
+  computeRectLayout,
+  probeRectFaithfulness,
+} from '#/core/layout/rect-layout.ts'
+import type {
+  CanvasLayout,
+  HasseLayoutResult,
+  HasseNode,
+  RectLayoutInput,
+} from '#/core/layout/types.ts'
 import type {
   PairRelation,
   RelationKind,
@@ -32,11 +40,32 @@ function rel(a: string, kind: RelationKind, b: string): PairRelation {
   return { a, b, kind }
 }
 
+/**
+ * The euler-or-hasse decision the app layer makes (ADR-0018): probe
+ * zero violations → euler, otherwise hasse. Reproduced here so the
+ * probe/engine agreement stays covered at core level.
+ */
+function pickCanvasLayout(input: RectLayoutInput): CanvasLayout {
+  const violations = probeRectFaithfulness(input)
+  if (violations.length === 0) {
+    return { mode: 'euler', ...computeRectLayout(input) }
+  }
+  const hasse = computeHasseLayout(input)
+  return {
+    mode: 'hasse',
+    ...hasse,
+    warnings: [
+      ...violations.map((violation) => `hasse fallback: ${violation}`),
+      ...hasse.warnings,
+    ],
+  }
+}
+
 function canvasOf(
   entities: Array<TypeEntity>,
   relations: Array<PairRelation> = [],
 ) {
-  return computeCanvasLayout({ entities, relations, viewport: VIEWPORT })
+  return pickCanvasLayout({ entities, relations, viewport: VIEWPORT })
 }
 
 function nodeOf(layout: HasseLayoutResult, id: string): HasseNode {
@@ -90,7 +119,7 @@ function complexScenario() {
   return { entities, relations }
 }
 
-describe('computeCanvasLayout engine switch', () => {
+describe('probe-driven engine switch', () => {
   test('simple containment stays in euler mode', () => {
     const layout = canvasOf(
       [entity('A'), entity('B')],
@@ -117,7 +146,7 @@ describe('computeCanvasLayout engine switch', () => {
       relations: [rel('B', 'subset', 'A')],
       viewport: VIEWPORT,
     }
-    const canvas = computeCanvasLayout(input)
+    const canvas = pickCanvasLayout(input)
     const direct = computeRectLayout(input)
     expect(canvas.mode).toBe('euler')
     if (canvas.mode === 'euler') {

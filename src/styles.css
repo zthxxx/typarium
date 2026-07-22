@@ -167,6 +167,11 @@ body {
   font-style: italic;
 }
 
+/* Canvas hover → editor: the hovered class's declaration lines. */
+.canvas-hover-line {
+  background: color-mix(in srgb, var(--color-spark) 30%, transparent);
+}
+
 /* Focus visibility: game-feel thick focus ring in brand color */
 :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-brand) 60%, transparent);
