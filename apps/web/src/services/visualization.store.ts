@@ -12,7 +12,11 @@ import type {
   SourceSpan,
   TypeEntity,
 } from '@typarium/set-model'
-import type { EntityRect, RectLayoutResult } from '@typarium/diagram-euler'
+import type {
+  EntityRect,
+  PlaceholderRect,
+  RectLayoutResult,
+} from '@typarium/diagram-euler'
 import type { HasseLayoutResult } from '@typarium/diagram-hasse'
 import type { AnalysisService } from '#/services/analysis.service.ts'
 
@@ -62,6 +66,13 @@ export class VisualizationStore {
    * highlight several equal exports in the editor at once.
    */
   hoveredEntityIds: Array<string> = []
+
+  /**
+   * The `???` (everything-else) block under the pointer, by key.
+   * Mutually exclusive with entity hover: a placeholder IS a hover
+   * target of its own — it must highlight, never dim, when pointed at.
+   */
+  hoveredPlaceholderKey: string | null = null
 
   /**
    * Editor caret offset — the SOURCE value; the highlighted entity is
@@ -176,6 +187,13 @@ export class VisualizationStore {
   /** Canvas hover: the full equivalence class of the hit rect/node. */
   hoverClass(entityIds: Array<string> | null): void {
     this.hoveredEntityIds = entityIds ?? []
+    this.hoveredPlaceholderKey = null
+  }
+
+  /** Canvas hover landed on a `???` block instead of an entity. */
+  hoverPlaceholder(key: string | null): void {
+    this.hoveredPlaceholderKey = key
+    this.hoveredEntityIds = []
   }
 
   /** Editor caret moved: remember where it is. */
@@ -204,24 +222,38 @@ export class VisualizationStore {
   /** Ids driving highlight/dim; hover wins over the caret. */
   get activeEntityIds(): Array<string> {
     if (this.hoveredEntityIds.length > 0) return this.hoveredEntityIds
+    // A hovered placeholder owns the highlight: the caret must not keep
+    // some entity lit next to it.
+    if (this.hoveredPlaceholderKey !== null) return []
     return this.cursorEntityId === null ? [] : [this.cursorEntityId]
   }
 
-  get hasActiveEntity(): boolean {
-    return this.activeEntityIds.length > 0
+  /** Anything hover/caret-active — entity class OR a ??? block. */
+  get hasActive(): boolean {
+    return (
+      this.activeEntityIds.length > 0 || this.hoveredPlaceholderKey !== null
+    )
   }
 
   /** A rect/node lights up when it shares an entity with the active class. */
   isHighlighted(entityIds: Array<string>): boolean {
     return (
-      this.hasActiveEntity &&
+      this.activeEntityIds.length > 0 &&
       entityIds.some((id) => this.activeEntityIds.includes(id))
     )
   }
 
   /** Everything not highlighted dims while something is active. */
   isDimmed(entityIds: Array<string>): boolean {
-    return this.hasActiveEntity && !this.isHighlighted(entityIds)
+    return this.hasActive && !this.isHighlighted(entityIds)
+  }
+
+  isPlaceholderHighlighted(key: string): boolean {
+    return this.hoveredPlaceholderKey === key
+  }
+
+  isPlaceholderDimmed(key: string): boolean {
+    return this.hasActive && this.hoveredPlaceholderKey !== key
   }
 
   /**
@@ -287,6 +319,17 @@ export class VisualizationStore {
       layout?.mode === 'euler' &&
       layout.placeholders.some((placeholder) => contains(placeholder.box, x, y))
     return { items, onNever: this.neverDisplayed, onPlaceholder }
+  }
+
+  /** The `???` block under a canvas point, if any (euler mode). */
+  placeholderAt(x: number, y: number): PlaceholderRect | null {
+    const layout = this.layout
+    if (!layout || layout.mode !== 'euler') return null
+    return (
+      layout.placeholders.find((placeholder) =>
+        contains(placeholder.box, x, y),
+      ) ?? null
+    )
   }
 
   /** Whether a point falls inside some rectangle body (vs background). */

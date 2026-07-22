@@ -325,6 +325,11 @@ test('diagram mode: euler by default, hasse pin sticks, auto-return without pin'
 test('canvas hover paints the export lines yellow in the editor', async ({
   page,
 }) => {
+  // The longest boot chain in the suite: engine warmup -> first
+  // analysis -> deferred monaco -> decorations. Under full parallel
+  // load (one engine per worker page) it can exceed the default
+  // budget while passing comfortably alone.
+  test.slow()
   await loadCode(page, 'export type Foo = "foo" | "bar"')
   // Monaco loads AFTER the first analysis (canvas-first boot); the
   // line decoration needs the editor to exist.

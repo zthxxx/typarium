@@ -6,8 +6,11 @@ const HUE_COUNT = 12
 
 export interface HasseDiagramProps {
   layout: HasseLayoutResult
-  /** Class-level dim predicate; placeholder nodes carry an empty class. */
-  isDimmed?: (entityIds: Array<string>) => boolean
+  /**
+   * Per-node dim predicate — receives the whole node so the host can
+   * treat `???` placeholder nodes as hover targets of their own.
+   */
+  isNodeDimmed?: (node: HasseNode) => boolean
   /**
    * Node hover callbacks with the DOM element as tooltip anchor; the
    * HOST renders any tooltip — the component stays chrome-free.
@@ -24,7 +27,7 @@ export interface HasseDiagramProps {
  */
 export function HasseDiagram({
   layout,
-  isDimmed = () => false,
+  isNodeDimmed = () => false,
   onNodeEnter,
   onNodeLeave,
 }: HasseDiagramProps) {
@@ -65,7 +68,7 @@ export function HasseDiagram({
               color: placeholder
                 ? 'rgba(100, 106, 115, 0.75)'
                 : `var(--set-hue-${hue}-stroke)`,
-              opacity: isDimmed(node.entityIds) ? 0.3 : 1,
+              opacity: isNodeDimmed(node) ? 0.3 : 1,
             }}
             onMouseEnter={(event) => onNodeEnter?.(node, event.currentTarget)}
             onMouseLeave={() => onNodeLeave?.(node)}

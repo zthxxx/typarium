@@ -103,7 +103,7 @@ describe('VisualizationStore hover class', () => {
     expect(store.isHighlighted(['B'])).toBe(true)
     expect(store.isDimmed(['P'])).toBe(true)
     store.hoverClass(null)
-    expect(store.hasActiveEntity).toBe(false)
+    expect(store.hasActive).toBe(false)
   })
 
   test('editor spans cover every code-origin member of the hovered class', () => {
@@ -114,6 +114,39 @@ describe('VisualizationStore hover class', () => {
       { start: 0, end: 20 },
       { start: 30, end: 50 },
     ])
+  })
+
+  test('hovering a ??? placeholder highlights it and dims entities', () => {
+    const { store } = makeStore(equalPair)
+    store.hoverPlaceholder('A+B+rest')
+    expect(store.isPlaceholderHighlighted('A+B+rest')).toBe(true)
+    expect(store.isPlaceholderDimmed('A+B+rest')).toBe(false)
+    // Every entity dims; no entity is highlighted alongside the block.
+    expect(store.isDimmed(['A'])).toBe(true)
+    expect(store.isHighlighted(['A'])).toBe(false)
+    expect(store.editorHighlightSpans).toEqual([])
+
+    // Entity hover takes over and releases the placeholder, and back.
+    store.hoverClass(['A'])
+    expect(store.hoveredPlaceholderKey).toBeNull()
+    expect(store.isPlaceholderDimmed('A+B+rest')).toBe(true)
+    store.hoverPlaceholder('A+B+rest')
+    expect(store.activeEntityIds).toEqual([])
+    store.hoverClass(null)
+    expect(store.hasActive).toBe(false)
+    expect(store.isPlaceholderDimmed('A+B+rest')).toBe(false)
+  })
+
+  test('placeholder hover overrides the caret highlight entirely', () => {
+    const { store } = makeStore(equalPair)
+    store.setCursorOffset(10)
+    expect(store.activeEntityIds).toEqual(['A'])
+    store.hoverPlaceholder('rest')
+    expect(store.activeEntityIds).toEqual([])
+    expect(store.isDimmed(['A'])).toBe(true)
+    store.hoverClass(null)
+    // Caret comes back once the pointer leaves the block.
+    expect(store.activeEntityIds).toEqual(['A'])
   })
 
   test('caret highlight never drives editor spans (hover only)', () => {

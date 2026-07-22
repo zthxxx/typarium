@@ -35,7 +35,11 @@ export const HasseView = observer(function HasseView({
     <>
       <HasseDiagram
         layout={layout}
-        isDimmed={(entityIds) => viz.isDimmed(entityIds)}
+        isNodeDimmed={(node) =>
+          node.kind === 'placeholder'
+            ? viz.isPlaceholderDimmed(node.key)
+            : viz.isDimmed(node.entityIds)
+        }
         onNodeEnter={(node, element) => {
           const rect = element.getBoundingClientRect()
           setHovered({
@@ -47,7 +51,11 @@ export const HasseView = observer(function HasseView({
               height: rect.height,
             },
           })
-          if (node.entityIds.length > 0) viz.hoverClass(node.entityIds)
+          if (node.kind === 'placeholder') {
+            viz.hoverPlaceholder(node.key)
+          } else if (node.entityIds.length > 0) {
+            viz.hoverClass(node.entityIds)
+          }
         }}
         onNodeLeave={() => {
           setHovered(null)

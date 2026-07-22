@@ -7,13 +7,16 @@ const HUE_COUNT = 12
 
 export interface EulerDiagramProps {
   layout: RectLayoutResult
-  /**
-   * Class-level dim/highlight predicates; the placeholder (`???`)
-   * queries with an empty class so it dims whenever anything is
-   * active. Both default to inert.
-   */
+  /** Class-level dim/highlight predicates; both default to inert. */
   isDimmed?: (entityIds: Array<string>) => boolean
   isHighlighted?: (entityIds: Array<string>) => boolean
+  /**
+   * Per-placeholder dim/highlight by key: a `???` block is a hover
+   * target of its own, so the host decides its state — it must be able
+   * to highlight while everything else dims.
+   */
+  isPlaceholderDimmed?: (key: string) => boolean
+  isPlaceholderHighlighted?: (key: string) => boolean
   /** Text inside the everything-else block; defaults to `???`. */
   placeholderLabel?: string
 }
@@ -28,6 +31,8 @@ export function EulerDiagram({
   layout,
   isDimmed = () => false,
   isHighlighted = () => false,
+  isPlaceholderDimmed = () => false,
+  isPlaceholderHighlighted = () => false,
   placeholderLabel = '???',
 }: EulerDiagramProps) {
   return (
@@ -89,7 +94,10 @@ export function EulerDiagram({
             top: placeholder.box.y,
             width: placeholder.box.width,
             height: placeholder.box.height,
-            opacity: isDimmed([]) ? 0.3 : 1,
+            opacity: isPlaceholderDimmed(placeholder.key) ? 0.3 : 1,
+            boxShadow: isPlaceholderHighlighted(placeholder.key)
+              ? '0 0 0 3px rgba(100, 106, 115, 0.25)'
+              : undefined,
           }}
         >
           {/* SVG stroke instead of CSS dashed: dash gap is tunable —

@@ -62,9 +62,19 @@ export const RectCanvas = observer(function RectCanvas() {
         const y = event.clientY - bounds.top
         setPointer({ x, y })
         setStack(viz.stackAt(x, y))
-        // The whole equivalence class of the innermost rect: hover may
-        // correspond to SEVERAL equal exports in the editor.
-        viz.hoverClass(viz.rectAt(x, y)?.entityIds ?? null)
+        // Hover driving is EULER-only here: in hasse mode the node
+        // chips own enter/leave, and this bubbling handler would wipe
+        // their state right after every mouseenter.
+        if (viz.layout?.mode !== 'euler') return
+        // A ??? block is its own hover target; otherwise the whole
+        // equivalence class of the innermost rect (hover may correspond
+        // to SEVERAL equal exports in the editor).
+        const placeholder = viz.placeholderAt(x, y)
+        if (placeholder) {
+          viz.hoverPlaceholder(placeholder.key)
+        } else {
+          viz.hoverClass(viz.rectAt(x, y)?.entityIds ?? null)
+        }
       }}
       onMouseLeave={() => {
         setPointer(null)
@@ -88,6 +98,8 @@ export const RectCanvas = observer(function RectCanvas() {
           layout={euler}
           isDimmed={(entityIds) => viz.isDimmed(entityIds)}
           isHighlighted={(entityIds) => viz.isHighlighted(entityIds)}
+          isPlaceholderDimmed={(key) => viz.isPlaceholderDimmed(key)}
+          isPlaceholderHighlighted={(key) => viz.isPlaceholderHighlighted(key)}
         />
       ) : null}
 
