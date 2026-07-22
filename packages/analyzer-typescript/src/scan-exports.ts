@@ -73,8 +73,11 @@ export function scanExports(source: string): {
     let displayName = name
     let typeArguments: Array<string> | undefined
     if (typeParameters && typeParameters.length > 0) {
+      // The label reproduces the parameter DECLARATIONS as authored —
+      // constraints and defaults included (`C1<T extends string>`), so
+      // the family's domain is readable right on the canvas.
       displayName = `${name}<${typeParameters
-        .map((parameter) => parameter.name.text)
+        .map((parameter) => singleLine(parameter.getText(sourceFile)))
         .join(', ')}>`
       const allDefaulted = typeParameters.every(
         (parameter) => parameter.default !== undefined,

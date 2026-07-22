@@ -411,6 +411,6 @@ test('teaching: constraint bounds the generic family in both variances', async (
   )
   const list = await relations(page)
   // Covariant: tighter constraint -> smaller set; contravariant flips.
-  expect(relationOf(list, 'BoxStr<T>', 'Box<T>')).toBe('subset')
-  expect(relationOf(list, 'H<T>', 'HStr<T>')).toBe('subset')
+  expect(relationOf(list, 'BoxStr<T extends string>', 'Box<T>')).toBe('subset')
+  expect(relationOf(list, 'H<T>', 'HStr<T extends string>')).toBe('subset')
 })

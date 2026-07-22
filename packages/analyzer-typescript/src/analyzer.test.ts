@@ -145,16 +145,18 @@ describe('ts analyzer', () => {
       [],
     )
     const ids = result.entities.map((entity) => entity.id)
-    expect(ids).toEqual(['Generic<T>', 'WithDefault<T>', 'Shown'])
+    expect(ids).toEqual(['Generic<T>', 'WithDefault<T = string>', 'Shown'])
     // Unconstrained T evaluates at unknown: T | boolean degenerates to
     // the universe — correct, if initially surprising (ADR-0022).
     expect(
       result.entities.find((entity) => entity.id === 'Generic<T>')?.special,
     ).toBe('universe')
     // The all-default generic instantiates bare: string | boolean.
-    expect(relationOf(result, 'Shown', 'WithDefault<T>')).toBe('unrelated')
+    expect(relationOf(result, 'Shown', 'WithDefault<T = string>')).toBe(
+      'unrelated',
+    )
     expect(
-      result.entities.find((entity) => entity.id === 'WithDefault<T>')
+      result.entities.find((entity) => entity.id === 'WithDefault<T = string>')
         ?.expandedText,
     ).toBe('string | boolean')
   })
@@ -171,13 +173,18 @@ describe('ts analyzer', () => {
       [],
     )
     // Covariant position: a TIGHTER constraint is a SMALLER family bound.
-    expect(relationOf(result, 'BoxStr<T>', 'Box<T>')).toBe('subset')
-    expect(relationOf(result, 'BoxLit', 'BoxStr<T>')).toBe('subset')
+    expect(relationOf(result, 'BoxStr<T extends string>', 'Box<T>')).toBe(
+      'subset',
+    )
+    expect(relationOf(result, 'BoxLit', 'BoxStr<T extends string>')).toBe(
+      'subset',
+    )
     // Contravariant position flips it: the unconstrained handler family
     // bound accepts everything, making it the SMALLEST handler set.
-    expect(relationOf(result, 'H<T>', 'HStr<T>')).toBe('subset')
+    expect(relationOf(result, 'H<T>', 'HStr<T extends string>')).toBe('subset')
     expect(
-      result.entities.find((entity) => entity.id === 'BoxStr<T>')?.expandedText,
+      result.entities.find((entity) => entity.id === 'BoxStr<T extends string>')
+        ?.expandedText,
     ).toBe('{ value: string; }')
   })
 
