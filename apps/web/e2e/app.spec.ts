@@ -395,3 +395,22 @@ test('editor caret highlights its export on the canvas without any mouse', async
     )
     .toBe('1')
 })
+
+test('teaching: constraint bounds the generic family in both variances', async ({
+  page,
+}) => {
+  await loadCode(
+    page,
+    [
+      'export type Box<T> = { value: T }',
+      'export type BoxStr<T extends string> = { value: T }',
+      'export type H<T> = (value: T) => void',
+      'export type HStr<T extends string> = (value: T) => void',
+    ].join('\n'),
+    'Box<T>',
+  )
+  const list = await relations(page)
+  // Covariant: tighter constraint -> smaller set; contravariant flips.
+  expect(relationOf(list, 'BoxStr<T>', 'Box<T>')).toBe('subset')
+  expect(relationOf(list, 'H<T>', 'HStr<T>')).toBe('subset')
+})

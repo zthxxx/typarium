@@ -22,8 +22,9 @@ export type TextOrNumber = string | number
 
 export type Point = { x: number; y: number }
 
-// Function parameters are contravariant under strict mode,
-// so WideHandler ends up INSIDE StrHandler:
+// Function parameters are contravariant under strict mode, so
+// WideHandler ends up INSIDE StrHandler — and the bare generic
+// Handler<X>, drawn at its unknown bound (ADR-0022), sits innermost:
 export type Handler<X> = (value: X) => void
 export type StrHandler = Handler<string>
 export type WideHandler = Handler<string | number>

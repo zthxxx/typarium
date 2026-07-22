@@ -9,10 +9,19 @@ import type { SourceDiagnostic, SourceSpan } from '@typarium/set-model'
  */
 
 export interface ScannedExport {
+  /** Export identifier — the import target for the probe file. */
   name: string
+  /** Entity label: `Name<T, U>` for generics, else the name itself. */
+  displayName: string
   span: SourceSpan
   /** Single-line display text: alias RHS, or the whole declaration. */
   typeText: string
+  /**
+   * Explicit probe instantiation arguments (ADR-0022): per parameter,
+   * default > constraint > `unknown`. Absent when a bare reference
+   * already instantiates (non-generic, or every parameter defaulted).
+   */
+  typeArguments?: Array<string>
 }
 
 /**
@@ -48,23 +57,41 @@ export function scanExports(source: string): {
       (ts.getCombinedModifierFlags(statement) & ts.ModifierFlags.Export) !== 0
     if (!isExported) continue
 
-    // Generic types are sets only once instantiated: include a generic
-    // export only when every type parameter has a default (referencing
-    // it bare instantiates with the defaults).
+    // Generic types are sets only once instantiated (ADR-0022): the
+    // canonical representative evaluates every parameter at
+    // default > constraint > `unknown`. All-default generics keep the
+    // bare reference (it instantiates with the defaults, and defaults
+    // may legally reference earlier parameters).
     const typeParameters = ts.isEnumDeclaration(statement)
       ? undefined
       : statement.typeParameters
-    if (
-      typeParameters &&
-      typeParameters.length > 0 &&
-      !typeParameters.every((parameter) => parameter.default !== undefined)
-    ) {
-      continue
-    }
 
     const name = statement.name.text
     if (seen.has(name)) continue
     seen.add(name)
+
+    let displayName = name
+    let typeArguments: Array<string> | undefined
+    if (typeParameters && typeParameters.length > 0) {
+      displayName = `${name}<${typeParameters
+        .map((parameter) => parameter.name.text)
+        .join(', ')}>`
+      const allDefaulted = typeParameters.every(
+        (parameter) => parameter.default !== undefined,
+      )
+      if (!allDefaulted) {
+        // Constraint text may reference a sibling parameter — the probe
+        // alias then errors and the broken-alias defense drops ONLY
+        // that entity.
+        typeArguments = typeParameters.map((parameter) =>
+          parameter.default
+            ? parameter.default.getText(sourceFile)
+            : parameter.constraint
+              ? parameter.constraint.getText(sourceFile)
+              : 'unknown',
+        )
+      }
+    }
 
     const raw = ts.isTypeAliasDeclaration(statement)
       ? statement.type.getText(sourceFile)
@@ -72,8 +99,10 @@ export function scanExports(source: string): {
 
     all.push({
       name,
+      displayName,
       span: { start: statement.getStart(sourceFile), end: statement.getEnd() },
       typeText: singleLine(raw),
+      typeArguments,
     })
   }
 

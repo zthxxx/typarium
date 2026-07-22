@@ -134,7 +134,7 @@ describe('ts analyzer', () => {
     expect(result.entities[0]?.special).toBe('empty')
   })
 
-  test('scan rules: non-export and defaultless generics skipped', () => {
+  test('scan rules: non-exports skipped, generics shown at their bound (ADR-0022)', () => {
     const result = analyzer.analyze(
       [
         'type Hidden = string',
@@ -145,13 +145,52 @@ describe('ts analyzer', () => {
       [],
     )
     const ids = result.entities.map((entity) => entity.id)
-    expect(ids).toEqual(['WithDefault', 'Shown'])
-    // The all-default generic instantiates bare: string | boolean.
-    expect(relationOf(result, 'Shown', 'WithDefault')).toBe('unrelated')
+    expect(ids).toEqual(['Generic<T>', 'WithDefault<T>', 'Shown'])
+    // Unconstrained T evaluates at unknown: T | boolean degenerates to
+    // the universe — correct, if initially surprising (ADR-0022).
     expect(
-      result.entities.find((entity) => entity.id === 'WithDefault')
+      result.entities.find((entity) => entity.id === 'Generic<T>')?.special,
+    ).toBe('universe')
+    // The all-default generic instantiates bare: string | boolean.
+    expect(relationOf(result, 'Shown', 'WithDefault<T>')).toBe('unrelated')
+    expect(
+      result.entities.find((entity) => entity.id === 'WithDefault<T>')
         ?.expandedText,
     ).toBe('string | boolean')
+  })
+
+  test('constraint bounds make generic families comparable (ADR-0022)', () => {
+    const result = analyzer.analyze(
+      [
+        'export type Box<T> = { value: T }',
+        'export type BoxStr<T extends string> = { value: T }',
+        'export type BoxLit = { value: "a" }',
+        'export type H<T> = (value: T) => void',
+        'export type HStr<T extends string> = (value: T) => void',
+      ].join('\n'),
+      [],
+    )
+    // Covariant position: a TIGHTER constraint is a SMALLER family bound.
+    expect(relationOf(result, 'BoxStr<T>', 'Box<T>')).toBe('subset')
+    expect(relationOf(result, 'BoxLit', 'BoxStr<T>')).toBe('subset')
+    // Contravariant position flips it: the unconstrained handler family
+    // bound accepts everything, making it the SMALLEST handler set.
+    expect(relationOf(result, 'H<T>', 'HStr<T>')).toBe('subset')
+    expect(
+      result.entities.find((entity) => entity.id === 'BoxStr<T>')?.expandedText,
+    ).toBe('{ value: string; }')
+  })
+
+  test('sibling-referencing constraints drop only that entity', () => {
+    const result = analyzer.analyze(
+      [
+        'export type Odd<T, U extends T> = [T, U]',
+        'export type Fine = string',
+      ].join('\n'),
+      [],
+    )
+    const ids = result.entities.map((entity) => entity.id)
+    expect(ids).toEqual(['Fine'])
   })
 
   test('expandedText resolves aliases one level', () => {

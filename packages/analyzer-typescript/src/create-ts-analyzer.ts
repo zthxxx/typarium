@@ -227,17 +227,20 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
       scanExports(source)
     setFile(MAIN_FILE, source)
 
-    // One probe alias per displayed type. Bare references to
-    // all-default generics instantiate with the defaults, so probe
-    // aliases uniformly yield fully instantiated types.
+    // One probe alias per displayed type. All-default generics
+    // instantiate bare; other generics get EXPLICIT arguments at their
+    // constraint bound (ADR-0022), so probe aliases uniformly yield
+    // fully instantiated types.
     const importLine =
       scanned.length > 0
         ? `import type { ${scanned
             .map((entry, index) => `${entry.name} as __I${index}`)
             .join(', ')} } from './main.ts'`
         : ''
-    const codeAliases = scanned.map(
-      (_, index) => `export type __E${index} = __I${index}`,
+    const codeAliases = scanned.map((entry, index) =>
+      entry.typeArguments
+        ? `export type __E${index} = __I${index}<${entry.typeArguments.join(', ')}>`
+        : `export type __E${index} = __I${index}`,
     )
     const virtualAliases = virtualTypes.map(
       (virtual, index) => `export type __V${index} = ${virtual.typeText}`,
@@ -347,10 +350,10 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
         type,
         aliasName: `__E${index}`,
         entity: {
-          id: entry.name,
-          name: entry.name,
+          id: entry.displayName,
+          name: entry.displayName,
           typeText: entry.typeText,
-          expandedText: expansionOf(type, entry.name, entry.typeText),
+          expandedText: expansionOf(type, entry.displayName, entry.typeText),
           special: classify(type),
           origin: 'code',
           declarationSpan: entry.span,
