@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { autorun } from 'mobx'
+import { autorun, when } from 'mobx'
 import { observer } from 'mobx-react-lite'
 import { AnalysisService } from '#/services/analysis.service.ts'
 import { EditorService } from '#/services/editor.service.ts'
@@ -28,9 +28,25 @@ export const MonacoEditor = observer(function MonacoEditor() {
 
   useEffect(() => {
     let disposed = false
+    let booted = false
     const disposables: Array<{ dispose: () => void }> = []
 
-    void setupMonaco().then((monaco) => {
+    // Canvas first (ADR-0020): monaco's 3.5MB yields the cold-start
+    // network to the analysis engine. Load once the first analysis
+    // lands (or fails), with a hard fallback so a hung engine never
+    // blocks the editor.
+    const bootMonaco = () => {
+      if (booted || disposed) return
+      booted = true
+      void setupMonaco().then(attachEditor)
+    }
+    const stopWaiting = when(
+      () => analysis.lastGoodResult !== null || analysis.failed,
+      bootMonaco,
+    )
+    const fallback = setTimeout(bootMonaco, 5_000)
+
+    function attachEditor(monaco: MonacoApi) {
       if (disposed || !hostRef.current) return
       monacoRef.current = monaco
 
@@ -154,10 +170,12 @@ export const MonacoEditor = observer(function MonacoEditor() {
           monaco,
         }
       }
-    })
+    }
 
     return () => {
       disposed = true
+      stopWaiting()
+      clearTimeout(fallback)
       for (const disposable of disposables) disposable.dispose()
       editorRef.current?.getModel()?.dispose()
       editorRef.current?.dispose()

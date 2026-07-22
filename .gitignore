@@ -16,3 +16,6 @@ todos.json
 e2e/.results
 playwright-report
 .playwright-cli
+
+# generated at dev/build time from node_modules/typescript
+public/ts-libs-*.json

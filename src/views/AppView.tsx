@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { useEffect, useMemo, useState } from 'react'
 import { bootstrapContent, createAppContainer } from '#/services/container.ts'
 import { AnalysisService } from '#/services/analysis.service.ts'
+import { BootService } from '#/services/boot.service.ts'
 import { EditorService } from '#/services/editor.service.ts'
 import { PresetService } from '#/services/preset.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
@@ -31,6 +32,7 @@ export function AppView({ adapter }: { adapter: LanguageAdapter }) {
       editor: container.get(EditorService),
       presets: container.get(PresetService),
       viz: container.get(VisualizationStore),
+      boot: container.get(BootService),
     }
   }, [container, adapter])
 

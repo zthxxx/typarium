@@ -368,21 +368,21 @@ describe('ts analyzer', () => {
     expect(coveredOf(result, 'TextOrNumber')).toBe(false)
   })
 
-  test('twoslash: ^? query resolves the type at position', () => {
-    const queries = analyzer.twoslashQueries('const a = 1\n//    ^?')
+  test('twoslash: ^? query resolves the type at position', async () => {
+    const queries = await analyzer.twoslashQueries('const a = 1\n//    ^?')
     expect(queries.length).toBe(1)
     expect(queries[0].text).toContain('const a: 1')
     expect(queries[0].line).toBe(0)
   })
 
-  test('twoslash: unmarked source short-circuits to empty', () => {
-    expect(analyzer.twoslashQueries('const a = 1')).toEqual([])
+  test('twoslash: unmarked source short-circuits to empty', async () => {
+    expect(await analyzer.twoslashQueries('const a = 1')).toEqual([])
   })
 
-  test('twoslash: broken code never throws', () => {
-    expect(analyzer.twoslashQueries('const a: unknwon = 1\n//    ^?')).toEqual(
-      expect.any(Array),
-    )
+  test('twoslash: broken code never throws', async () => {
+    expect(
+      await analyzer.twoslashQueries('const a: unknwon = 1\n//    ^?'),
+    ).toEqual(expect.any(Array))
   })
 
   test('broken virtual preset drops only that entity', () => {

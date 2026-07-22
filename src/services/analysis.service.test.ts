@@ -109,6 +109,27 @@ describe('AnalysisService', () => {
     expect(service.lastGoodResult?.entities[0].name).toBe('BACK')
   })
 
+  test('hydration paints once, never overrides, never claims a fresh input', async () => {
+    const adapter = createFakeAdapter()
+    const service = new AnalysisService(adapter)
+    service.hydrate(resultNamed('CACHED'))
+    expect(service.lastGoodResult?.entities[0].name).toBe('CACHED')
+    // Hydrated results are not fresh engine output: no snapshot key.
+    expect(service.lastGoodInput).toBeNull()
+
+    service.hydrate(resultNamed('SECOND'))
+    expect(service.lastGoodResult?.entities[0].name).toBe('CACHED')
+
+    // The live engine replaces the snapshot and records its input.
+    const live = service.analyze('code', [])
+    adapter.analyzeCalls[0].resolve(resultNamed('LIVE'))
+    await live
+    expect(service.lastGoodResult?.entities[0].name).toBe('LIVE')
+    expect(service.lastGoodInput?.source).toBe('code')
+    service.hydrate(resultNamed('LATE'))
+    expect(service.lastGoodResult?.entities[0].name).toBe('LIVE')
+  })
+
   test('a stale failure does not mark the newer in-flight analysis failed', async () => {
     const adapter = createFakeAdapter()
     const service = new AnalysisService(adapter)

@@ -1,5 +1,6 @@
 import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
+import { BootService } from '#/services/boot.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { VisualizationStore } from '#/services/visualization.store.ts'
 import { useService } from '#/views/di.tsx'
@@ -21,6 +22,7 @@ const HUE_COUNT = 12
 export const RectCanvas = observer(function RectCanvas() {
   const viz = useService(VisualizationStore)
   const settings = useService(SettingsService)
+  const boot = useService(BootService)
   const hostRef = useRef<HTMLDivElement>(null)
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
   const [stack, setStack] = useState<TooltipStack | null>(null)
@@ -136,11 +138,13 @@ export const RectCanvas = observer(function RectCanvas() {
 
       {hasse ? <HasseView layout={hasse} /> : null}
 
-      {!hasContent && !universeActive && !neverActive ? (
+      {!hasContent && !universeActive && !neverActive && boot.done ? (
         <p className="absolute inset-0 flex items-center justify-center text-base text-(--color-ink-soft)">
           {settings.t('canvas.emptyHint')}
         </p>
       ) : null}
+
+      {!boot.done ? <BootOverlay /> : null}
 
       {pointer && stack && (stack.items.length > 0 || neverActive) ? (
         <StackTooltip
@@ -157,6 +161,44 @@ export const RectCanvas = observer(function RectCanvas() {
           otherRow={settings.t('canvas.otherTypes')}
           hostRef={hostRef}
         />
+      ) : null}
+    </div>
+  )
+})
+
+const BOOT_STAGE_KEYS = {
+  'engine-download': 'boot.engineDownload',
+  'engine-init': 'boot.engineInit',
+  restore: 'boot.restore',
+  'first-analysis': 'boot.firstAnalysis',
+} as const
+
+/**
+ * Real-progress boot overlay (ADR-0020): weighted stage completion +
+ * live byte fractions drive the bar; the caption names the stage.
+ * Cache-hydrated boots mark first-analysis done immediately, so the
+ * overlay never covers an already-usable canvas.
+ */
+const BootOverlay = observer(function BootOverlay() {
+  const boot = useService(BootService)
+  const settings = useService(SettingsService)
+  const stage = boot.activeStage
+
+  return (
+    <div
+      data-testid="boot-overlay"
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-(--color-board)/85"
+    >
+      <div className="h-2.5 w-56 overflow-hidden rounded-full border-2 border-(--color-ink) bg-white">
+        <div
+          className="h-full rounded-full bg-(--color-brand) transition-[width] duration-200"
+          style={{ width: `${Math.round(boot.progress * 100)}%` }}
+        />
+      </div>
+      {stage ? (
+        <p className="font-mono text-[11px] text-(--color-ink-soft)">
+          {settings.t(BOOT_STAGE_KEYS[stage])}
+        </p>
       ) : null}
     </div>
   )

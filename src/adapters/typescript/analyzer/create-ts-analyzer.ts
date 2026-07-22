@@ -4,8 +4,7 @@ import {
   createSystem,
   createVirtualTypeScriptEnvironment,
 } from '@typescript/vfs'
-import { createTwoslasher } from 'twoslash'
-import type { TwoslashInstance } from 'twoslash'
+import type { createTwoslasher } from 'twoslash'
 import type { VirtualTypeScriptEnvironment } from '@typescript/vfs'
 
 import { scanExports } from '#/adapters/typescript/analyzer/scan-exports.ts'
@@ -53,7 +52,7 @@ export interface TsAnalyzer {
     preferences?: CompletionPreferences,
   ) => Array<CompletionEntry>
   /** Twoslash `// ^?` queries; skips the twoslasher when unmarked. */
-  twoslashQueries: (source: string) => Array<InlineQuery>
+  twoslashQueries: (source: string) => Promise<Array<InlineQuery>>
   /** Inject an acquired declaration file (ATA) into the project. */
   addLibraryFile: (path: string, content: string) => void
   dispose: () => void
@@ -580,14 +579,22 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
 
   // Twoslash builds its own program per call — lazily created, cached,
   // and only invoked when the source actually carries a `^?` marker.
-  let twoslasher: TwoslashInstance | null = null
-  const twoslashQueries = (source: string): Array<InlineQuery> => {
+  // The module itself loads on demand (dynamic import): it never rides
+  // in the worker's boot-critical chunk (ADR-0020).
+  let twoslasherPromise: Promise<ReturnType<typeof createTwoslasher>> | null =
+    null
+  const twoslashQueries = async (
+    source: string,
+  ): Promise<Array<InlineQuery>> => {
     if (!/\/\/\s*\^\?/.test(source)) return []
-    twoslasher ??= createTwoslasher({
-      tsModule: ts,
-      fsMap: new Map(files),
-      compilerOptions: COMPILER_OPTIONS,
-    })
+    twoslasherPromise ??= import('twoslash').then(({ createTwoslasher }) =>
+      createTwoslasher({
+        tsModule: ts,
+        fsMap: new Map(files),
+        compilerOptions: COMPILER_OPTIONS,
+      }),
+    )
+    const twoslasher = await twoslasherPromise
     try {
       // keepNotations leaves `// ^?` lines in place so query positions
       // stay in ORIGINAL source coordinates — by default twoslash strips

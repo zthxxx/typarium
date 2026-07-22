@@ -6,10 +6,12 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "node scripts/generate-ts-libs.mjs && vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "build": "vite build",
+    "generate-sample-snapshot": "node --experimental-strip-types --import ./scripts/register-alias.mjs scripts/generate-sample-snapshot.mts",
+    "build": "node scripts/generate-ts-libs.mjs && pnpm generate-sample-snapshot && vite build && node scripts/inject-preload.mjs",
     "preview": "vite preview",
+    "perf:cold": "node scripts/measure-cold-start.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",

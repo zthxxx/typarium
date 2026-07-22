@@ -124,7 +124,17 @@ test('empty code and no presets leave the canvas empty', async ({ page }) => {
   await page.evaluate(() => {
     window.__typarium!.editor.replaceCode('')
   })
-  await page.waitForTimeout(2_500)
+  // Wait for the EMPTY analysis to land (the boot may have hydrated the
+  // sample first; a fixed sleep would race the engine warmup).
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => window.__typarium!.analysis.lastGoodResult?.entities.length,
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(0)
   const rects = await page
     .getByTestId('rect-canvas')
     .locator('div[style*="border"]')
@@ -316,6 +326,11 @@ test('canvas hover paints the export lines yellow in the editor', async ({
   page,
 }) => {
   await loadCode(page, 'export type Foo = "foo" | "bar"')
+  // Monaco loads AFTER the first analysis (canvas-first boot); the
+  // line decoration needs the editor to exist.
+  await expect(page.locator('.monaco-editor').first()).toBeVisible({
+    timeout: 30_000,
+  })
   const point = await page.evaluate(() => {
     const layout = window.__typarium!.viz.layout
     if (!layout || layout.mode !== 'euler') return null

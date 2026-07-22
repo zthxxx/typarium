@@ -75,6 +75,12 @@ export interface LanguageDescriptor {
    * never / any. Views must render these, never hardcoded TS names.
    */
   readonly specialTypeNames: SpecialTypeNames
+  /**
+   * Optional build-time analysis of `sampleSource` (same pinned
+   * engine): first-ever visits paint the canvas before the engine
+   * boots; the live engine re-verifies immediately after (ADR-0020).
+   */
+  readonly sampleAnalysis?: AnalysisResult
   /** Declaration syntax for snippet-preset insertion. */
   readonly snippet: SnippetSyntax
 }

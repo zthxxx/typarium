@@ -20,6 +20,12 @@ import type {
 export class AnalysisService {
   /** Last analysis whose diagnostics contain no errors. */
   lastGoodResult: AnalysisResult | null = null
+  /**
+   * The exact input that produced `lastGoodResult` — the snapshot key
+   * for cache-first rendering (ADR-0020). Null while the result is a
+   * hydrated snapshot rather than a fresh engine run.
+   */
+  lastGoodInput: { source: string; virtualNames: Array<string> } | null = null
   /** Diagnostics of the most recent analysis, error or not. */
   diagnostics: Array<SourceDiagnostic> = []
   analyzing = false
@@ -32,6 +38,16 @@ export class AnalysisService {
       adapter: false,
       sequence: false,
     })
+  }
+
+  /**
+   * Boot-time cache hydration: paint the canvas with the stored last
+   * good result while the engine still boots. Only before any real
+   * analysis has landed; the first live run replaces it (ticket flow).
+   */
+  hydrate(result: AnalysisResult): void {
+    if (this.lastGoodResult !== null) return
+    this.lastGoodResult = result
   }
 
   /** Static language facts (names, presets, snippet syntax, engine). */
@@ -93,6 +109,10 @@ export class AnalysisService {
         )
         if (!hasBlockingErrors) {
           this.lastGoodResult = result
+          this.lastGoodInput = {
+            source,
+            virtualNames: virtualTypes.map((virtual) => virtual.name),
+          }
         }
         this.analyzing = false
       })

@@ -1,0 +1,161 @@
+{
+  "entities": [
+    {
+      "id": "Fruit",
+      "name": "Fruit",
+      "typeText": "'apple' | 'banana'",
+      "expandedText": "\"apple\" | \"banana\"",
+      "special": "none",
+      "origin": "code",
+      "declarationSpan": {
+        "start": 63,
+        "end": 101
+      },
+      "coveredBySubsets": false
+    },
+    {
+      "id": "Text",
+      "name": "Text",
+      "typeText": "string",
+      "expandedText": "string",
+      "special": "none",
+      "origin": "code",
+      "declarationSpan": {
+        "start": 102,
+        "end": 127
+      },
+      "coveredBySubsets": false
+    },
+    {
+      "id": "TextOrNumber",
+      "name": "TextOrNumber",
+      "typeText": "string | number",
+      "expandedText": "string | number",
+      "special": "none",
+      "origin": "code",
+      "declarationSpan": {
+        "start": 128,
+        "end": 170
+      },
+      "coveredBySubsets": false
+    },
+    {
+      "id": "Point",
+      "name": "Point",
+      "typeText": "{ x: number; y: number }",
+      "expandedText": "{ x: number; y: number; }",
+      "special": "none",
+      "origin": "code",
+      "declarationSpan": {
+        "start": 172,
+        "end": 216
+      },
+      "coveredBySubsets": false
+    },
+    {
+      "id": "StrHandler",
+      "name": "StrHandler",
+      "typeText": "Handler<string>",
+      "expandedText": "(value: string) => void",
+      "special": "none",
+      "origin": "code",
+      "declarationSpan": {
+        "start": 367,
+        "end": 407
+      },
+      "coveredBySubsets": false
+    },
+    {
+      "id": "WideHandler",
+      "name": "WideHandler",
+      "typeText": "Handler<string | number>",
+      "expandedText": "(value: string | number) => void",
+      "special": "none",
+      "origin": "code",
+      "declarationSpan": {
+        "start": 408,
+        "end": 458
+      },
+      "coveredBySubsets": false
+    }
+  ],
+  "relations": [
+    {
+      "a": "Fruit",
+      "b": "Text",
+      "kind": "subset"
+    },
+    {
+      "a": "Fruit",
+      "b": "TextOrNumber",
+      "kind": "subset"
+    },
+    {
+      "a": "Fruit",
+      "b": "Point",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Fruit",
+      "b": "StrHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Fruit",
+      "b": "WideHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Text",
+      "b": "TextOrNumber",
+      "kind": "subset"
+    },
+    {
+      "a": "Text",
+      "b": "Point",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Text",
+      "b": "StrHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Text",
+      "b": "WideHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "TextOrNumber",
+      "b": "Point",
+      "kind": "unrelated"
+    },
+    {
+      "a": "TextOrNumber",
+      "b": "StrHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "TextOrNumber",
+      "b": "WideHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Point",
+      "b": "StrHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "Point",
+      "b": "WideHandler",
+      "kind": "unrelated"
+    },
+    {
+      "a": "StrHandler",
+      "b": "WideHandler",
+      "kind": "superset"
+    }
+  ],
+  "diagnostics": [],
+  "anyEntityNames": []
+}

@@ -1,5 +1,6 @@
 import { expose } from 'comlink'
 import { createTsAnalyzer } from '#/adapters/typescript/analyzer/index.ts'
+import { tsLibsUrl } from '#/adapters/typescript/ts-libs-manifest.ts'
 import type { TsAnalyzer } from '#/adapters/typescript/analyzer/index.ts'
 import type {
   BootProgressEvent,
@@ -13,14 +14,11 @@ import type { TypeAcquirer } from '#/adapters/typescript/analyzer/type-acquisiti
 
 /**
  * Web Worker hosting the single TypeScript implementation (ADR-0015):
- * canvas analysis AND editor language features run here. The FULL lib
- * set ships as lazy raw chunks (no CDN dependency) — the fixed
- * compiler baseline includes DOM + ESNext.
+ * canvas analysis AND editor language features run here. The default
+ * lib files are NOT bundled into this chunk — they arrive as one
+ * comment-stripped JSON asset (ADR-0020), fetched in parallel with
+ * this script's own parse and reported with real byte progress.
  */
-const libModules = import.meta.glob('/node_modules/typescript/lib/lib.*.d.ts', {
-  query: '?raw',
-  import: 'default',
-})
 
 let analyzerPromise: Promise<TsAnalyzer> | null = null
 let acquirer: TypeAcquirer | null = null
@@ -31,24 +29,61 @@ const emitProgress = (event: BootProgressEvent) => {
   bootProgressListener?.(event)
 }
 
+/** Stream the libs asset, reporting loaded/total byte fractions. */
+async function fetchLibFiles(): Promise<Map<string, string>> {
+  emitProgress({ stage: 'engine-download', fraction: 0 })
+  const response = await fetch(tsLibsUrl)
+  if (!response.ok || !response.body) {
+    throw new Error(`ts-libs asset failed: ${response.status} ${tsLibsUrl}`)
+  }
+  // content-length is the compressed size while the reader yields
+  // decoded bytes — the fraction can overshoot, so cap it at 1.
+  const total = Number(response.headers.get('content-length')) || null
+  const reader = response.body.getReader()
+  const chunks: Array<Uint8Array> = []
+  let loaded = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    loaded += value.byteLength
+    if (total) {
+      emitProgress({
+        stage: 'engine-download',
+        fraction: Math.min(1, loaded / total),
+      })
+    }
+  }
+  emitProgress({ stage: 'engine-download', fraction: 1 })
+  const text = new TextDecoder().decode(
+    chunks.length === 1 ? chunks[0] : concat(chunks, loaded),
+  )
+  const parsed = JSON.parse(text) as {
+    version: string
+    files: Record<string, string>
+  }
+  return new Map(
+    Object.entries(parsed.files).map(([name, content]) => [
+      `/${name}`,
+      content,
+    ]),
+  )
+}
+
+function concat(chunks: Array<Uint8Array>, size: number): Uint8Array {
+  const merged = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return merged
+}
+
 function getAnalyzer(): Promise<TsAnalyzer> {
   analyzerPromise ??= (async () => {
-    emitProgress({ stage: 'engine-init', fraction: 0 })
-    const entries = Object.entries(libModules)
-    const libFiles = new Map<string, string>()
-    let loaded = 0
-    await Promise.all(
-      entries.map(async ([path, load]) => {
-        const fileName = path.slice(path.lastIndexOf('/') + 1)
-        libFiles.set(`/${fileName}`, await load())
-        loaded += 1
-        // Lib loading dominates init: report real per-file fractions.
-        emitProgress({
-          stage: 'engine-init',
-          fraction: (loaded / entries.length) * 0.8,
-        })
-      }),
-    )
+    const libFiles = await fetchLibFiles()
+    emitProgress({ stage: 'engine-init' })
     const analyzer = createTsAnalyzer({ libFiles })
     acquirer = createTypeAcquirer({
       receiveFile: (path, content) => analyzer.addLibraryFile(path, content),

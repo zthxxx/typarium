@@ -44,6 +44,10 @@ const en = {
   'editor.resize': 'Drag to resize editor',
   'editor.loading': 'Loading editor…',
   'footer.engine': 'Type analysis engine: {version}',
+  'boot.engineDownload': 'Downloading the type engine…',
+  'boot.engineInit': 'Starting the type engine…',
+  'boot.restore': 'Restoring your content…',
+  'boot.firstAnalysis': 'Computing the first diagram…',
   'footer.computing': 'Computing…',
   'footer.analyzing': 'Analyzing set relations…',
 } as const
@@ -86,6 +90,10 @@ const zh: Record<MessageKey, string> = {
   'editor.resize': '拖拽调整编辑器宽度',
   'editor.loading': '编辑器加载中…',
   'footer.engine': '类型分析引擎：{version}',
+  'boot.engineDownload': '下载类型引擎中…',
+  'boot.engineInit': '启动类型引擎中…',
+  'boot.restore': '恢复内容中…',
+  'boot.firstAnalysis': '计算首张图中…',
   'footer.computing': '计算中…',
   'footer.analyzing': '计算集合关系中…',
 }

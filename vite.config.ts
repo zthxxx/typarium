@@ -6,6 +6,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // ES-format workers keep dynamic imports as REAL split chunks: the
+  // analysis worker ships without prettier (lazy, first format only)
+  // and without the lib files (runtime JSON asset, ADR-0020).
+  worker: { format: 'es' },
   plugins: [
     tailwindcss(),
     tanstackStart({
