@@ -1,4 +1,4 @@
-import { Button, Card, Input, Radio, Switch, Tooltip } from 'animal-island-ui'
+import { Card, Input, Radio, Switch, Tooltip } from 'animal-island-ui'
 import { Bars3BottomLeftIcon, Cog6ToothIcon } from '@heroicons/react/20/solid'
 import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
@@ -15,11 +15,13 @@ import type { ReactNode } from 'react'
  * editor-config popover. Every popup positions itself through the
  * shared floating-ui Popup so window edges never clip it.
  *
- * Icons are CONVENTIONAL glyphs (heroicons) inside island Buttons:
- * the island's 10-icon game catalogue has no recognizable equivalents
- * for format/settings, and tool actions must read at a glance
- * (ADR-0024 deviation, user feedback).
+ * Triggers are the pill family's DENSE variant (ADR-0024): the 36-40px
+ * toolbar strip can't breathe around the library Button's 32px box, so
+ * these are 26px token-drawn pills. Icons stay CONVENTIONAL glyphs
+ * (heroicons) — tool actions must read at a glance.
  */
+const PILL_SM =
+  'flex h-[26px] items-center rounded-full border-[1.5px] border-(--color-outline) bg-(--color-board) text-(--color-ink) transition-colors hover:border-[#827157]'
 export const EditorToolbar = observer(function EditorToolbar() {
   const settings = useService(SettingsService)
   const editor = useService(EditorService)
@@ -62,16 +64,16 @@ export const EditorToolbar = observer(function EditorToolbar() {
 
       {analysis.editor?.format ? (
         <Tooltip title={settings.t('editor.format')} variant="island">
-          <Button
-            size="small"
+          <button
+            type="button"
             aria-label={settings.t('editor.format')}
-            icon={
-              <Bars3BottomLeftIcon className="h-4 w-4" aria-hidden="true" />
-            }
+            className={`${PILL_SM} w-[26px] justify-center`}
             onClick={() => {
               void editor.formatDocument(settings.editorConfig)
             }}
-          />
+          >
+            <Bars3BottomLeftIcon className="h-4 w-4" aria-hidden="true" />
+          </button>
         </Tooltip>
       ) : null}
 
@@ -207,15 +209,19 @@ function MenuButton({
   }, [open])
 
   const trigger = (
-    <Button
-      size="small"
+    <button
+      type="button"
       aria-expanded={open}
       aria-label={label}
-      icon={icon}
+      className={
+        icon
+          ? `${PILL_SM} w-[26px] justify-center`
+          : `${PILL_SM} px-3 text-xs font-bold`
+      }
       onClick={() => setOpen((value) => !value)}
     >
-      {icon ? undefined : label}
-    </Button>
+      {icon ?? label}
+    </button>
   )
 
   return (
