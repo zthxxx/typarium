@@ -28,18 +28,18 @@ function BootSplash() {
           cy="14"
           r="12"
           fill="none"
-          stroke="#3178c6"
+          stroke="#19c8b9"
           strokeWidth="3"
         />
         <circle
           cx="17"
           cy="16"
           r="5.5"
-          fill="#f7df1e"
-          stroke="#1b2733"
+          fill="#f5c31c"
+          stroke="#794f27"
           strokeWidth="2"
         />
-        <circle cx="9.5" cy="11" r="1.8" fill="#1b2733" />
+        <circle cx="9.5" cy="11" r="1.8" fill="#794f27" />
       </svg>
       <p className="font-game text-2xl font-bold tracking-tight">typarium</p>
       <p className="text-sm font-semibold text-(--color-ink-soft)">

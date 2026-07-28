@@ -34,6 +34,14 @@ export const PresetsBar = observer(function PresetsBar() {
   )
 })
 
+/**
+ * Hand-drawn chip on island tokens (ADR-0024): the library Button's
+ * hover lift / color flip made a dense wrapping row look staggered, so
+ * chips keep ONE box and change COLOR only — active fills with the
+ * island teal candy, idle stays a quiet parchment pill; `any` swaps
+ * the same pair into the island error red. Real `<button>` (e2e
+ * counts literal button elements for the `any` chip + badge).
+ */
 const PresetChip = observer(function PresetChip({
   preset,
   active,
@@ -44,17 +52,15 @@ const PresetChip = observer(function PresetChip({
   onClick: () => void
 }) {
   const warning = preset.tone === 'warning'
-  // Toggle state is COLOR only: an active chip keeps the exact box and
-  // shadow of its idle siblings, so rows stay visually aligned.
   const base =
-    'rounded-full border-2 px-2.5 py-0.5 font-mono text-[11px] font-bold transition-[transform,box-shadow,background-color,border-color] hover:-translate-y-[1px]'
+    'h-[30px] rounded-full border-[1.5px] px-3 font-mono text-xs font-bold transition-colors'
   const palette = warning
     ? active
-      ? 'border-(--color-warn-any) bg-(--color-warn-any) text-white shadow-[0_3px_0_rgba(255,77,48,0.35)]'
-      : 'border-(--color-warn-any)/70 bg-white text-(--color-warn-any) shadow-[0_3px_0_rgba(255,77,48,0.35)]'
+      ? 'border-[#c94444] bg-(--color-warn-any) text-white shadow-[0_2px_0_rgba(201,68,68,0.45)]'
+      : 'border-(--color-warn-any)/60 bg-(--color-board) text-(--color-warn-any) hover:border-(--color-warn-any)'
     : active
-      ? 'border-(--color-brand-deep) bg-(--color-brand) text-white shadow-(--shadow-keycap)'
-      : 'border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap)'
+      ? 'border-(--color-brand-deep) bg-(--color-brand) text-white shadow-[0_2px_0_rgba(15,168,155,0.45)]'
+      : 'border-(--color-outline) bg-(--color-board) text-(--color-ink) hover:border-[#827157]'
   return (
     <button
       type="button"

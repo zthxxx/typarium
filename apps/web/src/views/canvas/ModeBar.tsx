@@ -1,3 +1,4 @@
+import { Card, Radio } from 'animal-island-ui'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import { observer } from 'mobx-react-lite'
 import { useRef, useState } from 'react'
@@ -19,6 +20,9 @@ import type { PairRelation, TypeEntity } from '@typarium/set-model'
  * current containment cannot be drawn faithfully; the info popover
  * explains both paradigms with LIVE mini diagrams — the real layout
  * engines rendering a fixed demo input, never screenshots.
+ *
+ * The island Radio keeps native `input[type=radio]` semantics — the
+ * e2e getByRole('radio')/toBeChecked/toBeDisabled contract holds.
  */
 export const ModeBar = observer(function ModeBar() {
   const viz = useService(VisualizationStore)
@@ -27,7 +31,7 @@ export const ModeBar = observer(function ModeBar() {
   const [infoOpen, setInfoOpen] = useState(false)
 
   return (
-    <div className="flex items-center gap-2 px-4 pb-1">
+    <div className="flex items-center gap-3 px-4 pb-1">
       <span
         ref={infoRef}
         className="flex cursor-help items-center gap-1"
@@ -43,29 +47,33 @@ export const ModeBar = observer(function ModeBar() {
         />
       </span>
 
-      <div
-        role="radiogroup"
-        aria-label={settings.t('mode.title')}
-        className="flex gap-1.5"
-      >
-        <ModeRadio
-          label={settings.t('mode.euler')}
-          checked={viz.effectiveMode === 'euler'}
-          disabled={!viz.eulerDrawable}
-          disabledHint={settings.t('mode.eulerUnavailable')}
-          onSelect={() => viz.chooseMode('euler')}
-        />
-        <ModeRadio
-          label={settings.t('mode.hasse')}
-          checked={viz.effectiveMode === 'hasse'}
-          disabled={false}
-          onSelect={() => viz.chooseMode('hasse')}
-        />
-      </div>
+      <Radio
+        size="small"
+        value={viz.effectiveMode}
+        onChange={(value) => viz.chooseMode(value as DiagramMode)}
+        options={[
+          {
+            value: 'euler',
+            disabled: !viz.eulerDrawable,
+            label: (
+              <span
+                title={
+                  viz.eulerDrawable
+                    ? undefined
+                    : settings.t('mode.eulerUnavailable')
+                }
+              >
+                {settings.t('mode.euler')}
+              </span>
+            ),
+          },
+          { value: 'hasse', label: settings.t('mode.hasse') },
+        ]}
+      />
 
       {infoOpen ? (
         <Popup anchor={infoRef} placement="bottom-start" distance={10}>
-          <div className="w-[480px] max-w-[92vw] rounded-xl border-2 border-(--color-ink) bg-white p-4 shadow-(--shadow-sticker)">
+          <Card className="w-[480px] max-w-[92vw]">
             <p className="mb-2 text-xs leading-relaxed">
               <span className="font-mono font-bold">
                 {settings.t('mode.euler')}
@@ -92,52 +100,15 @@ export const ModeBar = observer(function ModeBar() {
                 </figcaption>
               </figure>
             </div>
-            <p className="mt-2 text-center font-mono text-[11px] text-(--color-ink-soft)">
+            <p className="mt-2 text-center text-[11px] text-(--color-ink-soft)">
               {settings.t('mode.info.example')}
             </p>
-          </div>
+          </Card>
         </Popup>
       ) : null}
     </div>
   )
 })
-
-function ModeRadio({
-  label,
-  checked,
-  disabled,
-  disabledHint,
-  onSelect,
-}: {
-  label: string
-  checked: boolean
-  disabled: boolean
-  disabledHint?: string
-  onSelect: () => void
-}) {
-  // Checked state is COLOR only (no offset): radios keep one baseline.
-  const base =
-    'rounded-full border-2 px-2.5 py-0.5 font-mono text-[11px] font-bold transition-[transform,box-shadow,background-color,border-color]'
-  const palette = disabled
-    ? 'cursor-not-allowed border-(--color-line) bg-(--color-paper) text-(--color-ink-soft) opacity-60'
-    : checked
-      ? 'border-(--color-brand-deep) bg-(--color-brand) text-white shadow-(--shadow-keycap)'
-      : 'border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) hover:-translate-y-[1px]'
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      aria-disabled={disabled}
-      disabled={disabled}
-      title={disabled ? disabledHint : undefined}
-      className={`${base} ${palette}`}
-      onClick={disabled ? undefined : onSelect}
-    >
-      {label}
-    </button>
-  )
-}
 
 /**
  * Fixed teaching input: C1 contains C2 and C3; C2, C3 disjoint. Both

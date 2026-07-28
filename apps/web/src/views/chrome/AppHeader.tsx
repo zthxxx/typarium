@@ -1,9 +1,23 @@
 import { observer } from 'mobx-react-lite'
-import { LanguageIcon } from '@heroicons/react/20/solid'
 import { useEffect, useRef, useState } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
 import { Popup } from '#/views/floating/Popup.tsx'
 import { useService } from '#/views/di.tsx'
+import type { Locale } from '#/i18n/messages.ts'
+
+const LOCALE_OPTIONS: Array<{ key: Locale; label: string }> = [
+  { key: 'zh', label: '中文' },
+  { key: 'en', label: 'English' },
+]
+
+/**
+ * Header controls join the preset-chip pill family (ADR-0024): one
+ * 30px capsule recipe, color-only states. The locale trigger is the
+ * quiet outline variant, Share fills with the island teal — the same
+ * idle/active pair the chips speak, so the chrome reads as one family.
+ */
+const PILL =
+  'flex h-[30px] items-center rounded-full border-[1.5px] transition-colors'
 
 /**
  * Top chrome: identity, locale picker and the share action. The
@@ -32,13 +46,13 @@ export const AppHeader = observer(function AppHeader({
   }, [localeOpen])
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b-[3px] border-(--color-ink) bg-white px-4">
+    <header className="flex h-14 items-center gap-4 border-b-2 border-(--color-line) bg-(--color-board) px-4">
       <div className="flex items-center gap-2.5">
         <LogoMark />
-        <span className="font-game text-[22px] font-bold tracking-tight">
+        <span className="font-game text-[22px] font-extrabold tracking-tight">
           typarium
         </span>
-        <span className="hidden rounded-sm bg-[linear-gradient(to_top,rgba(247,223,30,0.6)_36%,transparent_36%)] px-1 text-sm font-semibold md:inline">
+        <span className="hidden rounded-sm bg-[linear-gradient(to_top,rgba(245,195,28,0.45)_36%,transparent_36%)] px-1 text-sm font-semibold md:inline">
           {settings.t('app.tagline')}
         </span>
       </div>
@@ -49,33 +63,31 @@ export const AppHeader = observer(function AppHeader({
             type="button"
             aria-label={settings.t('header.language')}
             aria-expanded={localeOpen}
-            className="flex h-[30px] items-center gap-1 rounded-full border-2 border-(--color-ink) bg-white px-2.5 font-mono text-xs font-bold shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+            className={`${PILL} gap-1.5 border-(--color-outline) bg-(--color-board) px-3.5 text-sm font-bold text-(--color-ink) hover:border-[#827157]`}
             onClick={() => setLocaleOpen((open) => !open)}
           >
-            <LanguageIcon className="h-4 w-4" aria-hidden="true" />
-            <span aria-hidden="true" className="text-[9px]">
-              {localeOpen ? '▲' : '▼'}
+            {LOCALE_OPTIONS.find((o) => o.key === settings.locale)?.label}
+            <span
+              aria-hidden="true"
+              className="text-[9px] text-(--color-ink-soft)"
+            >
+              {localeOpen ? '▴' : '▾'}
             </span>
           </button>
           {localeOpen ? (
             <Popup anchor={localeRef} placement="bottom-end" distance={8}>
-              <div className="w-28 overflow-hidden rounded-xl border-2 border-(--color-ink) bg-white shadow-(--shadow-sticker)">
-                {(
-                  [
-                    ['zh', '中文'],
-                    ['en', 'English'],
-                  ] as const
-                ).map(([locale, label]) => (
+              <div className="w-28 overflow-hidden rounded-2xl border-[1.5px] border-(--color-outline) bg-(--color-board) py-1 shadow-(--shadow-sticker)">
+                {LOCALE_OPTIONS.map(({ key, label }) => (
                   <button
-                    key={locale}
+                    key={key}
                     type="button"
                     className={
-                      settings.locale === locale
-                        ? 'block w-full bg-(--color-paper) px-3 py-2 text-left font-mono text-xs font-bold text-(--color-brand)'
-                        : 'block w-full px-3 py-2 text-left font-mono text-xs hover:bg-(--color-paper)'
+                      settings.locale === key
+                        ? 'block w-full px-3.5 py-1.5 text-left text-sm font-bold text-(--color-brand)'
+                        : 'block w-full px-3.5 py-1.5 text-left text-sm hover:bg-[#f0e8d8]'
                     }
                     onClick={() => {
-                      settings.setLocale(locale)
+                      settings.setLocale(key)
                       setLocaleOpen(false)
                     }}
                   >
@@ -89,7 +101,7 @@ export const AppHeader = observer(function AppHeader({
 
         <button
           type="button"
-          className="flex h-[30px] items-center rounded-full border-2 border-(--color-brand-deep) bg-(--color-brand) px-4 text-sm font-bold whitespace-nowrap text-white shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[2px] active:shadow-none"
+          className={`${PILL} border-(--color-brand-deep) bg-(--color-brand) px-4 text-sm font-bold whitespace-nowrap text-white shadow-[0_2px_0_rgba(15,168,155,0.45)] hover:bg-[#3dd4c6]`}
           onClick={() => {
             // One click, one link: always share WITH the editor content.
             onShare(true)

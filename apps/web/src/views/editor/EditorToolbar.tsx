@@ -1,3 +1,4 @@
+import { Button, Card, Input, Radio, Switch, Tooltip } from 'animal-island-ui'
 import { Bars3BottomLeftIcon, Cog6ToothIcon } from '@heroicons/react/20/solid'
 import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
@@ -7,12 +8,17 @@ import { PresetService } from '#/services/preset.service.ts'
 import { SettingsService } from '#/services/settings.service.ts'
 import { Popup } from '#/views/floating/Popup.tsx'
 import { useService } from '#/views/di.tsx'
-import type { ReactNode, RefObject } from 'react'
+import type { ReactNode } from 'react'
 
 /**
  * Editor toolbar: snippet templates menu, one-click format, and the
  * editor-config popover. Every popup positions itself through the
  * shared floating-ui Popup so window edges never clip it.
+ *
+ * Icons are CONVENTIONAL glyphs (heroicons) inside island Buttons:
+ * the island's 10-icon game catalogue has no recognizable equivalents
+ * for format/settings, and tool actions must read at a glance
+ * (ADR-0024 deviation, user feedback).
  */
 export const EditorToolbar = observer(function EditorToolbar() {
   const settings = useService(SettingsService)
@@ -27,12 +33,15 @@ export const EditorToolbar = observer(function EditorToolbar() {
       <MenuButton
         label={settings.t('presets.snippets')}
         render={(close) => (
-          <div className="flex w-max max-w-[80vw] flex-col gap-1 rounded-xl border-2 border-(--color-ink) bg-white p-2 shadow-(--shadow-sticker)">
+          <Card
+            className="flex w-max max-w-[80vw] flex-col gap-1"
+            style={{ padding: 8 }}
+          >
             {snippets.map((preset) => (
               <button
                 key={preset.label}
                 type="button"
-                className="rounded-lg px-2.5 py-1 text-left font-mono text-xs whitespace-nowrap hover:bg-(--color-paper)"
+                className="rounded-lg px-2.5 py-1 text-left font-mono text-xs whitespace-nowrap hover:bg-[#f0e8d8]"
                 onClick={() => {
                   presets.toggle(preset)
                   close()
@@ -47,24 +56,28 @@ export const EditorToolbar = observer(function EditorToolbar() {
                 {preset.label}
               </button>
             ))}
-          </div>
+          </Card>
         )}
       />
 
       {analysis.editor?.format ? (
-        <IconButton
-          label={settings.t('editor.format')}
-          onClick={() => {
-            void editor.formatDocument(settings.editorConfig)
-          }}
-        >
-          <Bars3BottomLeftIcon className="h-4 w-4" aria-hidden="true" />
-        </IconButton>
+        <Tooltip title={settings.t('editor.format')} variant="island">
+          <Button
+            size="small"
+            aria-label={settings.t('editor.format')}
+            icon={
+              <Bars3BottomLeftIcon className="h-4 w-4" aria-hidden="true" />
+            }
+            onClick={() => {
+              void editor.formatDocument(settings.editorConfig)
+            }}
+          />
+        </Tooltip>
       ) : null}
 
       <MenuButton
-        icon={<Cog6ToothIcon className="h-4 w-4" aria-hidden="true" />}
         label={settings.t('editor.settings')}
+        icon={<Cog6ToothIcon className="h-4 w-4" aria-hidden="true" />}
         render={() => <EditorConfigPanel />}
       />
     </div>
@@ -78,7 +91,7 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
   const config = settings.editorConfig
 
   return (
-    <div className="flex w-64 flex-col gap-2.5 rounded-xl border-2 border-(--color-ink) bg-white p-3 font-mono text-xs shadow-(--shadow-sticker)">
+    <Card className="flex w-72 flex-col gap-2.5 text-xs">
       <ToggleRow
         label={settings.t('config.wordWrap')}
         checked={config.wordWrap}
@@ -86,29 +99,17 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
       />
       <div className="flex items-center justify-between gap-2">
         <span>{settings.t('config.quotes')}</span>
-        <div className="flex overflow-hidden rounded-lg border-2 border-(--color-ink)">
-          {(
-            [
-              [true, settings.t('config.quotes.single')],
-              [false, settings.t('config.quotes.double')],
-            ] as const
-          ).map(([single, label]) => (
-            <button
-              key={label}
-              type="button"
-              className={
-                config.singleQuote === single
-                  ? 'bg-(--color-brand) px-2 py-0.5 font-bold text-white'
-                  : 'bg-white px-2 py-0.5 hover:bg-(--color-paper)'
-              }
-              onClick={() =>
-                settings.updateEditorConfig({ singleQuote: single })
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Radio
+          size="small"
+          value={config.singleQuote ? 'single' : 'double'}
+          onChange={(value) =>
+            settings.updateEditorConfig({ singleQuote: value === 'single' })
+          }
+          options={[
+            { value: 'single', label: settings.t('config.quotes.single') },
+            { value: 'double', label: settings.t('config.quotes.double') },
+          ]}
+        />
       </div>
       <ToggleRow
         label={settings.t('config.semi')}
@@ -124,26 +125,28 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
       />
       <label className="flex items-center justify-between gap-2">
         <span>{settings.t('config.printWidth')}</span>
-        <input
-          type="number"
-          min={20}
-          max={160}
-          value={config.printWidth}
-          className="w-16 rounded-lg border-2 border-(--color-ink) px-1.5 py-0.5 text-right"
-          onChange={(event) => {
-            const printWidth = Number(event.target.value)
-            if (Number.isFinite(printWidth) && printWidth >= 20) {
-              settings.updateEditorConfig({ printWidth })
-            }
-          }}
-        />
+        <span className="w-24">
+          <Input
+            size="small"
+            type="number"
+            min={20}
+            max={160}
+            value={config.printWidth}
+            onChange={(event) => {
+              const printWidth = Number(event.target.value)
+              if (Number.isFinite(printWidth) && printWidth >= 20) {
+                settings.updateEditorConfig({ printWidth })
+              }
+            }}
+          />
+        </span>
       </label>
 
-      <div className="mt-1 border-t-2 border-dashed border-(--color-line) pt-2">
-        <span className="mb-1.5 block font-bold text-(--color-ink-soft)">
+      <div className="mt-1 border-t-2 border-dashed border-(--color-outline) pt-2">
+        <span className="mb-1.5 block font-mono font-bold text-(--color-ink-soft)">
           compilerOptions
         </span>
-        <ul className="flex flex-col gap-1 opacity-70">
+        <ul className="flex flex-col gap-1 font-mono opacity-70">
           {analysis.descriptor.compilerOptionsDisplay.map(([key, value]) => (
             <li key={key} className="flex items-baseline justify-between gap-2">
               <span>{key}</span>
@@ -154,7 +157,7 @@ const EditorConfigPanel = observer(function EditorConfigPanel() {
           ))}
         </ul>
       </div>
-    </div>
+    </Card>
   )
 })
 
@@ -168,54 +171,10 @@ function ToggleRow({
   onChange: (next: boolean) => void
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      className="flex items-center justify-between gap-2"
-      onClick={() => onChange(!checked)}
-    >
+    <span className="flex items-center justify-between gap-2">
       <span>{label}</span>
-      <span
-        className={
-          checked
-            ? 'flex h-4 w-7 items-center rounded-full bg-(--color-brand) pl-3.5 transition-[padding]'
-            : 'flex h-4 w-7 items-center rounded-full bg-(--color-line) pl-0.5 transition-[padding]'
-        }
-      >
-        <span className="h-3 w-3 rounded-full bg-white shadow" />
-      </span>
-    </button>
-  )
-}
-
-/** Icon button with a floating hover tooltip. */
-function IconButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  children: ReactNode
-}) {
-  const ref = useRef<HTMLButtonElement>(null)
-  const [hovered, setHovered] = useState(false)
-  return (
-    <>
-      <button
-        ref={ref}
-        type="button"
-        aria-label={label}
-        className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none"
-        onClick={onClick}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        {children}
-      </button>
-      {hovered ? <HoverTip anchor={ref} text={label} /> : null}
-    </>
+      <Switch size="small" checked={checked} onChange={onChange} />
+    </span>
   )
 }
 
@@ -226,12 +185,12 @@ function MenuButton({
   render,
 }: {
   label: string
+  /** Icon-only trigger (gets an island Tooltip); omit for a text trigger. */
   icon?: ReactNode
   render: (close: () => void) => ReactNode
 }) {
-  const ref = useRef<HTMLButtonElement>(null)
+  const ref = useRef<HTMLSpanElement>(null)
   const [open, setOpen] = useState(false)
-  const [hovered, setHovered] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -247,46 +206,34 @@ function MenuButton({
     return () => window.removeEventListener('pointerdown', onPointerDown)
   }, [open])
 
+  const trigger = (
+    <Button
+      size="small"
+      aria-expanded={open}
+      aria-label={label}
+      icon={icon}
+      onClick={() => setOpen((value) => !value)}
+    >
+      {icon ? undefined : label}
+    </Button>
+  )
+
   return (
     <>
-      <button
-        ref={ref}
-        type="button"
-        aria-expanded={open}
-        aria-label={label}
-        className={
-          icon
-            ? 'flex h-7 w-7 items-center justify-center rounded-lg border-2 border-(--color-ink) bg-white text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none'
-            : 'flex h-7 items-center rounded-lg border-2 border-(--color-ink) bg-white px-2.5 font-mono text-xs font-bold text-(--color-ink) shadow-(--shadow-keycap) transition-[transform,box-shadow] hover:-translate-y-[1px] active:translate-y-[1px] active:shadow-none'
-        }
-        onClick={() => setOpen((value) => !value)}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        {icon ?? label}
-      </button>
-      {hovered && !open && icon ? <HoverTip anchor={ref} text={label} /> : null}
+      <span ref={ref} className="inline-flex">
+        {icon ? (
+          <Tooltip title={label} variant="island">
+            {trigger}
+          </Tooltip>
+        ) : (
+          trigger
+        )}
+      </span>
       {open ? (
         <Popup anchor={ref} placement="bottom-end" distance={8}>
           <div data-popup="true">{render(() => setOpen(false))}</div>
         </Popup>
       ) : null}
     </>
-  )
-}
-
-function HoverTip({
-  anchor,
-  text,
-}: {
-  anchor: RefObject<Element | null>
-  text: string
-}) {
-  return (
-    <Popup anchor={anchor} placement="bottom" distance={8}>
-      <span className="pointer-events-none rounded-lg border-2 border-(--color-ink) bg-white px-2 py-0.5 font-mono text-[11px] font-bold whitespace-nowrap shadow-(--shadow-sticker)">
-        {text}
-      </span>
-    </Popup>
   )
 }

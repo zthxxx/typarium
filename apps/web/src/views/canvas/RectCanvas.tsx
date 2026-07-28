@@ -1,3 +1,4 @@
+import { Progress, Typewriter } from 'animal-island-ui'
 import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
 import { BootService } from '#/services/boot.service.ts'
@@ -107,7 +108,10 @@ export const RectCanvas = observer(function RectCanvas() {
 
       {!hasContent && !universeActive && !neverActive && boot.done ? (
         <p className="absolute inset-0 flex items-center justify-center text-base text-(--color-ink-soft)">
-          {settings.t('canvas.emptyHint')}
+          {/* Game-dialog beat: the empty stage invites like an NPC line. */}
+          <Typewriter speed={45} trigger={settings.locale}>
+            {settings.t('canvas.emptyHint')}
+          </Typewriter>
         </p>
       ) : null}
 
@@ -156,14 +160,16 @@ const BootOverlay = observer(function BootOverlay() {
       data-testid="boot-overlay"
       className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-(--color-board)/85"
     >
-      <div className="h-2.5 w-56 overflow-hidden rounded-full border-2 border-(--color-ink) bg-white">
-        <div
-          className="h-full rounded-full bg-(--color-brand) transition-[width] duration-200"
-          style={{ width: `${Math.round(boot.progress * 100)}%` }}
-        />
-      </div>
+      {/* The island's teal-stripe loading ribbon (matches Button loading). */}
+      <Progress
+        percent={Math.round(boot.progress * 100)}
+        size="small"
+        showInfo={false}
+        duration={0.2}
+        style={{ width: 224 }}
+      />
       {stage ? (
-        <p className="font-mono text-[11px] text-(--color-ink-soft)">
+        <p className="text-[11px] text-(--color-ink-soft)">
           {settings.t(BOOT_STAGE_KEYS[stage])}
         </p>
       ) : null}
@@ -196,7 +202,7 @@ function StackTooltip({
   }
   return (
     <Popup anchor={reference} placement="bottom-start" distance={14}>
-      <div className="pointer-events-none min-w-44 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 shadow-(--shadow-sticker)">
+      <div className="pointer-events-none min-w-44 rounded-xl border-2 border-(--color-outline) bg-(--color-board) px-3 py-2 shadow-(--shadow-sticker)">
         <ul className="flex flex-col gap-1">
           {stack.items.map((item, index) => (
             <li
@@ -226,7 +232,7 @@ function StackTooltip({
             <li className="flex items-baseline gap-2 font-mono text-xs">
               <span
                 className="h-2.5 w-2.5 shrink-0 self-center rounded-[4px] border"
-                style={{ borderColor: 'rgba(100,106,115,0.6)' }}
+                style={{ borderColor: 'rgba(159,146,125,0.8)' }}
               />
               <span className="font-bold text-(--color-ink-soft)">???</span>
               <span className="text-(--color-ink-soft)">{otherRow}</span>
@@ -258,7 +264,7 @@ const NeverLegend = observer(function NeverLegend() {
   return (
     <span
       ref={pillRef}
-      className="absolute bottom-3 left-4 z-10 rounded-full bg-white px-3 py-1 font-mono text-[11px] font-semibold transition-colors"
+      className="absolute bottom-3 left-4 z-10 rounded-full bg-(--color-board) px-3 py-1 font-mono text-[11px] font-semibold transition-colors"
       style={{
         color: hovered ? 'var(--color-ink)' : 'var(--color-ink-soft)',
       }}
@@ -276,7 +282,7 @@ const NeverLegend = observer(function NeverLegend() {
           height="94%"
           rx="12"
           fill="none"
-          stroke={hovered ? 'var(--color-ink)' : 'rgba(100,106,115,0.55)'}
+          stroke={hovered ? 'var(--color-ink)' : 'rgba(159,146,125,0.7)'}
           strokeWidth="1.5"
           strokeDasharray={hovered ? undefined : '3 3'}
         />
@@ -284,7 +290,7 @@ const NeverLegend = observer(function NeverLegend() {
       {settings.t('canvas.neverLegend', { name: viz.specialNames.empty })}
       {hovered && resolved.length > 0 ? (
         <Popup anchor={pillRef} placement="top-start" distance={8}>
-          <span className="block w-max max-w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 font-mono text-[11px] shadow-(--shadow-sticker)">
+          <span className="block w-max max-w-72 rounded-xl border-2 border-(--color-outline) bg-(--color-board) px-3 py-2 font-mono text-[11px] shadow-(--shadow-sticker)">
             <ul className="flex flex-col gap-1">
               {resolved.map((entity) => (
                 <li key={entity.id} className="flex items-baseline gap-2">

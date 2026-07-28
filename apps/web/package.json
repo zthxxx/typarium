@@ -25,6 +25,7 @@
     "@typarium/diagram-hasse": "workspace:*",
     "@typarium/language-adapter": "workspace:*",
     "@typarium/set-model": "workspace:*",
+    "animal-island-ui": "catalog:",
     "comlink": "catalog:",
     "idb": "catalog:",
     "lz-string": "catalog:",

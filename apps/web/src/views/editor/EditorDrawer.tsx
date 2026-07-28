@@ -28,19 +28,19 @@ export const EditorDrawer = observer(function EditorDrawer() {
               ? settings.t('editor.collapse')
               : settings.t('editor.expand')
           }
-          className="fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border-2 border-r-0 border-(--color-ink) bg-white px-1.5 py-4 font-mono text-sm font-bold shadow-[-2px_2px_0_rgba(27,39,51,0.12)]"
+          className="fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border-2 border-r-0 border-(--color-outline) bg-(--color-board) px-1.5 py-4 font-mono text-sm font-bold shadow-[-2px_2px_0_rgba(61,52,40,0.12)]"
           onClick={() => ui.toggleEditor()}
         >
           {ui.editorOpen ? '›' : '‹'}
         </button>
         <aside
-          className="fixed top-14 right-0 bottom-9 z-30 w-[min(92vw,480px)] border-l-[3px] border-(--color-ink) bg-(--color-board) shadow-[-8px_0_24px_rgba(27,39,51,0.18)] transition-transform duration-300"
+          className="fixed top-14 right-0 bottom-9 z-30 w-[min(92vw,480px)] border-l-2 border-(--color-outline) bg-(--color-board) shadow-[-8px_0_24px_rgba(61,52,40,0.18)] transition-transform duration-300"
           style={{
             transform: ui.editorOpen ? 'translateX(0)' : 'translateX(100%)',
           }}
           aria-hidden={!ui.editorOpen}
         >
-          <div className="flex h-9 shrink-0 items-center justify-end border-b-2 border-(--color-line) bg-white px-2">
+          <div className="flex h-9 shrink-0 items-center justify-end border-b-2 border-(--color-line) bg-(--color-board) px-2">
             <EditorToolbar />
           </div>
           <div className="h-[calc(100%-36px)]">
@@ -56,7 +56,7 @@ export const EditorDrawer = observer(function EditorDrawer() {
       <button
         type="button"
         aria-label={settings.t('editor.expand')}
-        className="flex h-full w-9 shrink-0 items-center justify-center border-l-2 border-(--color-line) bg-white font-mono text-base font-bold text-(--color-ink-soft) hover:bg-(--color-paper) hover:text-(--color-brand)"
+        className="flex h-full w-9 shrink-0 items-center justify-center border-l-2 border-(--color-line) bg-(--color-board) font-mono text-base font-bold text-(--color-ink-soft) hover:bg-(--color-paper) hover:text-(--color-brand)"
         onClick={() => ui.toggleEditor()}
       >
         ‹
@@ -89,7 +89,7 @@ export const EditorDrawer = observer(function EditorDrawer() {
         <div className="mx-auto h-full w-[3px] bg-(--color-line) transition-colors group-hover:bg-(--color-brand)" />
       </div>
       <div className="flex min-h-0 w-full flex-col border-l-2 border-(--color-line) bg-(--color-board)">
-        <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b-2 border-(--color-line) bg-white px-3">
+        <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b-2 border-(--color-line) bg-(--color-board) px-3">
           <span className="font-mono text-xs font-bold text-(--color-ink-soft)">
             {settings.t('editor.title')}
           </span>

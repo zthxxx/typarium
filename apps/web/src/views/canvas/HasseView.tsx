@@ -61,7 +61,7 @@ export const HasseView = observer(function HasseView({
 
       {hovered ? (
         <Popup anchor={hovered.anchor} placement="bottom-start" distance={10}>
-          <div className="pointer-events-none min-w-44 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 shadow-(--shadow-sticker)">
+          <div className="pointer-events-none min-w-44 rounded-xl border-2 border-(--color-outline) bg-(--color-board) px-3 py-2 shadow-(--shadow-sticker)">
             <ul className="flex flex-col gap-1">
               {hovered.node.kind === 'placeholder' ? (
                 <li className="flex items-baseline gap-2 font-mono text-xs">

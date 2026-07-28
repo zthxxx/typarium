@@ -1,5 +1,6 @@
+import { Notification } from 'animal-island-ui'
 import { observer } from 'mobx-react-lite'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { bootstrapContent, createAppContainer } from '#/services/container.ts'
 import { AnalysisService } from '#/services/analysis.service.ts'
 import { BootService } from '#/services/boot.service.ts'
@@ -52,7 +53,6 @@ const AppShell = observer(function AppShell({
   const share = useService(ShareService)
   const editor = useService(EditorService)
   const presets = useService(PresetService)
-  const [toast, setToast] = useState<string | null>(null)
 
   const doShare = (withContent: boolean) => {
     void share
@@ -65,8 +65,11 @@ const AppShell = observer(function AppShell({
         },
       })
       .then(() => {
-        setToast(settings.t('header.shareCopied'))
-        setTimeout(() => setToast(null), 2_400)
+        Notification.success({
+          message: settings.t('header.shareCopied'),
+          position: 'bottom',
+          duration: 2.4,
+        })
       })
   }
 
@@ -94,11 +97,6 @@ const AppShell = observer(function AppShell({
       </main>
       <AppFooter engineLabel={adapter.descriptor.engineLabel} />
       <AnyBadge />
-      {toast ? (
-        <div className="toast-pop fixed bottom-14 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-(--color-ink) bg-white px-5 py-2 text-sm font-bold shadow-(--shadow-sticker)">
-          {toast}
-        </div>
-      ) : null}
     </div>
   )
 })

@@ -110,7 +110,7 @@ export const AnyBadge = observer(function AnyBadge() {
         </svg>
         <span
           aria-hidden="true"
-          className="absolute inset-0 rounded-xl border-[3px] border-white bg-(--color-warn-any) shadow-[0_8px_0_rgba(255,77,48,0.35),0_14px_28px_rgba(255,77,48,0.55)]"
+          className="absolute inset-0 rounded-xl border-[3px] border-(--color-board) bg-(--color-warn-any) shadow-[0_8px_0_rgba(201,68,68,0.4),0_14px_28px_rgba(224,90,90,0.5)]"
           style={{ filter: 'url(#any-wobble)' }}
         />
         <span className="relative block px-6 py-2 font-mono text-lg font-bold text-white">
@@ -120,7 +120,7 @@ export const AnyBadge = observer(function AnyBadge() {
 
       {showTip ? (
         <Popup anchor={badgeRef} placement="bottom" distance={12}>
-          <span className="block w-72 rounded-xl border-2 border-(--color-ink) bg-white px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-(--shadow-sticker)">
+          <span className="block w-72 rounded-xl border-2 border-(--color-outline) bg-(--color-board) px-3 py-2 text-left font-sans text-xs font-normal text-(--color-ink) shadow-(--shadow-sticker)">
             <span className="mb-1 block">
               {settings.t('anyBadge.tooltip', { name: anyName })}
             </span>

@@ -28,6 +28,10 @@ const config = defineConfig({
   // analysis worker ships without prettier (lazy, first format only)
   // and without the lib files (runtime JSON asset, ADR-0020).
   worker: { format: 'es' },
+  // The UI kit is only reached through the lazy ClientApp chunk; left
+  // to lazy discovery, dev-server re-optimization would full-reload
+  // the page mid-session (and wipe the __typarium e2e probe).
+  optimizeDeps: { include: ['animal-island-ui'] },
   plugins: [
     tailwindcss(),
     tanstackStart({

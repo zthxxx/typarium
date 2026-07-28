@@ -75,6 +75,9 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^6.0.1
       version: 6.0.3
+    animal-island-ui:
+      specifier: ^1.4.0
+      version: 1.4.0
     comlink:
       specifier: ^4.4.2
       version: 4.4.2
@@ -215,6 +218,9 @@ importers:
       '@typarium/set-model':
         specifier: workspace:*
         version: link:../../packages/set-model
+      animal-island-ui:
+        specifier: 'catalog:'
+        version: 1.4.0(classnames@2.5.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       comlink:
         specifier: 'catalog:'
         version: 4.4.2
@@ -1596,6 +1602,14 @@ packages:
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
 
+  animal-island-ui@1.4.0:
+    resolution: {integrity: sha512-n2ve66HUfI95AHq5fpRxc9ZqByj4f/UX0XdaLtTwYPrSmEmRyePK6uo666xiXWjtloi5ucmy/dNMhbGY2XdNtw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      classnames: ^2.5.1
+      react: '>=17.0.0'
+      react-dom: '>=17.0.0'
+
   ansi-escapes@7.3.0:
     resolution: {integrity: sha512-BvU8nYgGQBxcmMuEeUEmNTvrMVjJNSH7RgW24vXexN4Ven6qCvy4TntnvlnwnMLTVlcRQQdbRY8NKnaIoeWDNg==}
     engines: {node: '>=18'}
@@ -1680,6 +1694,9 @@ packages:
   chokidar@5.0.0:
     resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
     engines: {node: '>= 20.19.0'}
+
+  classnames@2.5.1:
+    resolution: {integrity: sha512-saHYOzhIQs6wy2sVxTM6bUDsQO4F50V9RQ22qBpEdCW+I+/Wmke2HOl6lS6dTpdxVhb88/I6+Hs+438c3lfUow==}
 
   cli-cursor@5.0.0:
     resolution: {integrity: sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw==}
@@ -4249,6 +4266,12 @@ snapshots:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
+  animal-island-ui@1.4.0(classnames@2.5.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      classnames: 2.5.1
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+
   ansi-escapes@7.3.0:
     dependencies:
       environment: 1.1.0
@@ -4317,6 +4340,8 @@ snapshots:
   chokidar@5.0.0:
     dependencies:
       readdirp: 5.0.0
+
+  classnames@2.5.1: {}
 
   cli-cursor@5.0.0:
     dependencies:

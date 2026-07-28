@@ -22,7 +22,7 @@ export const AppFooter = observer(function AppFooter({
       : null
 
   return (
-    <footer className="flex h-[22px] items-center gap-4 border-t-2 border-(--color-line) bg-white px-4 font-mono text-[10px] text-(--color-ink-soft)">
+    <footer className="flex h-[22px] items-center gap-4 border-t-2 border-(--color-line) bg-(--color-board) px-4 font-mono text-[10px] text-(--color-ink-soft)">
       <span>{settings.t('footer.engine', { version: engineLabel })}</span>
       {status ? (
         <span className="ml-auto flex items-center gap-1.5 text-(--color-brand)">
