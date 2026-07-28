@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import lzString from 'lz-string'
 import type { Page } from '@playwright/test'
 import type { AnalysisService } from '#/services/analysis.service.ts'
+import type { BootService } from '#/services/boot.service.ts'
 import type { EditorService } from '#/services/editor.service.ts'
 import type { PresetService } from '#/services/preset.service.ts'
 import type { VisualizationStore } from '#/services/visualization.store.ts'
@@ -19,6 +20,7 @@ interface TypariumProbe {
   presets: PresetService
   analysis: AnalysisService
   viz: VisualizationStore
+  boot: BootService
 }
 
 declare global {
@@ -28,8 +30,18 @@ declare global {
 }
 
 async function waitForApp(page: Page): Promise<void> {
+  // Ready means the LIVE ENGINE has produced a result, not merely
+  // "something is on the canvas": cache-first boot (ADR-0020) hydrates
+  // lastGoodResult from a snapshot and marks boot done while the
+  // engine is still warming — lastGoodInput stays null until the first
+  // fresh engine run. A replaceCode issued before that point races
+  // both the restore overwrite and the engine warmup, and the
+  // per-assertion 30s budgets are too tight for a parallel-load
+  // warmup — absorb it here under the boot budget instead.
   await page.waitForFunction(
-    () => window.__typarium?.analysis.lastGoodResult != null,
+    () =>
+      window.__typarium?.boot.done === true &&
+      window.__typarium.analysis.lastGoodInput != null,
     undefined,
     { timeout: 90_000 },
   )
