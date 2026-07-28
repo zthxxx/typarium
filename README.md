@@ -1,7 +1,8 @@
-# typarium
+# Typarium
 
-TypeScript 代数集合论可视化 (TypeScript algebraic set theory,
-visualized). An interactive Euler-diagram playground
+TypeScript algebraic set theory visualized (代数集合论可视化).
+
+An interactive Euler-diagram playground
 that teaches the type system through set theory: `unknown` is the
 universe, `never` is the empty set (the ∅ texture in every region),
 literals are points, and every exported type is drawn as the set of
@@ -10,6 +11,8 @@ values it contains. `any` floats above the plane, it is not a set.
 Type `export type` declarations on the right; the diagram redraws 1.2s
 after you stop typing. Presets, shareable URLs (`Cmd/Ctrl+S`), zh/en
 locales, and IndexedDB persistence are built in.
+
+![Typarium Preview](./docs/assets/preview.png)
 
 ## Packages
 
