@@ -146,11 +146,15 @@ describe('ts analyzer', () => {
     )
     const ids = result.entities.map((entity) => entity.id)
     expect(ids).toEqual(['Generic<T>', 'WithDefault<T = string>', 'Shown'])
-    // Unconstrained T evaluates at unknown: T | boolean degenerates to
-    // the universe — correct, if initially surprising (ADR-0022).
+    // The representative evaluates to unknown, but a generic is a
+    // FUNCTION, not the universe: the stratum keeps it a plain set
+    // (ADR-0023).
     expect(
       result.entities.find((entity) => entity.id === 'Generic<T>')?.special,
-    ).toBe('universe')
+    ).toBe('none')
+    expect(
+      result.entities.find((entity) => entity.id === 'Generic<T>')?.parametric,
+    ).toBe(true)
     // The all-default generic instantiates bare: string | boolean.
     expect(relationOf(result, 'Shown', 'WithDefault<T = string>')).toBe(
       'unrelated',
@@ -176,8 +180,10 @@ describe('ts analyzer', () => {
     expect(relationOf(result, 'BoxStr<T extends string>', 'Box<T>')).toBe(
       'subset',
     )
+    // Across strata there is NO order: BoxLit is a set, BoxStr a
+    // function on sets (ADR-0023).
     expect(relationOf(result, 'BoxLit', 'BoxStr<T extends string>')).toBe(
-      'subset',
+      'unrelated',
     )
     // Contravariant position flips it: the unconstrained handler family
     // bound accepts everything, making it the SMALLEST handler set.
@@ -186,6 +192,33 @@ describe('ts analyzer', () => {
       result.entities.find((entity) => entity.id === 'BoxStr<T extends string>')
         ?.expandedText,
     ).toBe('{ value: string; }')
+  })
+
+  test('generic identity families never merge with their concrete twins (ADR-0023)', () => {
+    const result = analyzer.analyze(
+      [
+        'export type C1<T extends string> = T',
+        'export type C2<T> = T',
+        'export type Plain = string',
+      ].join('\n'),
+      [{ name: 'string', typeText: 'string' }],
+    )
+    // C1's representative IS string, C2's IS unknown — but neither
+    // merges into the concrete plane: not equivalent to the concrete
+    // alias, not equivalent to the preset, never the universe.
+    expect(relationOf(result, 'C1<T extends string>', 'Plain')).toBe(
+      'unrelated',
+    )
+    expect(relationOf(result, 'C1<T extends string>', 'preset:string')).toBe(
+      'unrelated',
+    )
+    expect(relationOf(result, 'C2<T>', 'Plain')).toBe('unrelated')
+    expect(
+      result.entities.find((entity) => entity.id === 'C2<T>')?.special,
+    ).toBe('none')
+    // Within the generic stratum the order remains: the tighter domain
+    // is the smaller family.
+    expect(relationOf(result, 'C1<T extends string>', 'C2<T>')).toBe('subset')
   })
 
   test('sibling-referencing constraints drop only that entity', () => {

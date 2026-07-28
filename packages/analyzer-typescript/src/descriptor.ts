@@ -23,8 +23,9 @@ export type TextOrNumber = string | number
 export type Point = { x: number; y: number }
 
 // Function parameters are contravariant under strict mode, so
-// WideHandler ends up INSIDE StrHandler — and the bare generic
-// Handler<X>, drawn at its unknown bound (ADR-0022), sits innermost:
+// WideHandler ends up INSIDE StrHandler. Handler<X> itself is a
+// FAMILY (a type-level function): its own set, compared only against
+// other generics — never merged into the concrete plane (ADR-0023):
 export type Handler<X> = (value: X) => void
 export type StrHandler = Handler<string>
 export type WideHandler = Handler<string | number>

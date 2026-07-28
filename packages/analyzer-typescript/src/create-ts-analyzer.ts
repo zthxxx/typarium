@@ -321,7 +321,14 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     }
     const subjects: Array<Subject> = []
 
-    const classify = (type: ts.Type): TypeEntity['special'] => {
+    // Parametric entities are type-level FUNCTIONS drawn through a
+    // representative — never the universe/empty/any of the VALUE-set
+    // plane, whatever their representative evaluates to (ADR-0023).
+    const classify = (
+      type: ts.Type,
+      parametric: boolean,
+    ): TypeEntity['special'] => {
+      if (parametric) return 'none'
       if ((type.flags & ts.TypeFlags.Any) !== 0) return 'outside-set-theory'
       if (checker.isTypeAssignableTo(type, neverType)) return 'empty'
       if (checker.isTypeAssignableTo(unknownType, type)) return 'universe'
@@ -354,10 +361,11 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
           name: entry.displayName,
           typeText: entry.typeText,
           expandedText: expansionOf(type, entry.displayName, entry.typeText),
-          special: classify(type),
+          special: classify(type, entry.parametric),
           origin: 'code',
           declarationSpan: entry.span,
           coveredBySubsets: false,
+          parametric: entry.parametric,
         },
       })
     })
@@ -373,7 +381,7 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
           name: virtual.name,
           typeText: virtual.typeText,
           expandedText: expansionOf(type, virtual.name, virtual.typeText),
-          special: classify(type),
+          special: classify(type, false),
           origin: 'preset',
           declarationSpan: null,
           coveredBySubsets: false,
@@ -408,6 +416,20 @@ export function createTsAnalyzer(options: TsAnalyzerOptions): TsAnalyzer {
     const relations: Array<PairRelation> = []
     for (let i = 0; i < drawable.length; i += 1) {
       for (let j = i + 1; j < drawable.length; j += 1) {
+        // Stratum wall (ADR-0023): a generic is a function on sets, a
+        // concrete type is a set — no canonical order across the two
+        // universes, so the pair is unrelated by definition.
+        if (
+          (drawable[i].entity.parametric ?? false) !==
+          (drawable[j].entity.parametric ?? false)
+        ) {
+          relations.push({
+            a: drawable[i].entity.id,
+            b: drawable[j].entity.id,
+            kind: 'unrelated',
+          })
+          continue
+        }
         const forward =
           checker.isTypeAssignableTo(drawable[i].type, drawable[j].type) &&
           monotone(i, j)

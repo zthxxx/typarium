@@ -11,7 +11,8 @@
         "start": 63,
         "end": 101
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": false
     },
     {
       "id": "Text",
@@ -24,7 +25,8 @@
         "start": 102,
         "end": 127
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": false
     },
     {
       "id": "TextOrNumber",
@@ -37,7 +39,8 @@
         "start": 128,
         "end": 170
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": false
     },
     {
       "id": "Point",
@@ -50,7 +53,8 @@
         "start": 172,
         "end": 216
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": false
     },
     {
       "id": "Handler<X>",
@@ -60,10 +64,11 @@
       "special": "none",
       "origin": "code",
       "declarationSpan": {
-        "start": 415,
-        "end": 458
+        "start": 485,
+        "end": 528
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": true
     },
     {
       "id": "StrHandler",
@@ -73,10 +78,11 @@
       "special": "none",
       "origin": "code",
       "declarationSpan": {
-        "start": 459,
-        "end": 499
+        "start": 529,
+        "end": 569
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": false
     },
     {
       "id": "WideHandler",
@@ -86,10 +92,11 @@
       "special": "none",
       "origin": "code",
       "declarationSpan": {
-        "start": 500,
-        "end": 550
+        "start": 570,
+        "end": 620
       },
-      "coveredBySubsets": false
+      "coveredBySubsets": false,
+      "parametric": false
     }
   ],
   "relations": [
@@ -186,12 +193,12 @@
     {
       "a": "Handler<X>",
       "b": "StrHandler",
-      "kind": "subset"
+      "kind": "unrelated"
     },
     {
       "a": "Handler<X>",
       "b": "WideHandler",
-      "kind": "subset"
+      "kind": "unrelated"
     },
     {
       "a": "StrHandler",

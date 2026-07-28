@@ -67,6 +67,14 @@ export interface TypeEntity {
   coveredBySubsets: boolean
   /** Span of the declaration in the source; null for preset entities. */
   declarationSpan: SourceSpan | null
+  /**
+   * True for generic (parametric) entities — type-level FUNCTIONS
+   * drawn via their bound representative (ADR-0022). Parametric
+   * entities form their own stratum: they compare only among
+   * themselves and never classify as special roles (ADR-0023).
+   * Absent means concrete.
+   */
+  parametric?: boolean
 }
 
 export interface SourceSpan {

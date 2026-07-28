@@ -22,6 +22,8 @@ export interface ScannedExport {
    * already instantiates (non-generic, or every parameter defaulted).
    */
   typeArguments?: Array<string>
+  /** Any type parameters at all — the generic stratum (ADR-0023). */
+  parametric: boolean
 }
 
 /**
@@ -106,6 +108,7 @@ export function scanExports(source: string): {
       span: { start: statement.getStart(sourceFile), end: statement.getEnd() },
       typeText: singleLine(raw),
       typeArguments,
+      parametric: (typeParameters?.length ?? 0) > 0,
     })
   }
 
