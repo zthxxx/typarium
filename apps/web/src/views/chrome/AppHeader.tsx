@@ -1,3 +1,4 @@
+import { LanguageIcon } from '@heroicons/react/20/solid'
 import { observer } from 'mobx-react-lite'
 import { useEffect, useRef, useState } from 'react'
 import { SettingsService } from '#/services/settings.service.ts'
@@ -66,6 +67,7 @@ export const AppHeader = observer(function AppHeader({
             className={`${PILL} gap-1.5 border-(--color-outline) bg-(--color-board) px-3.5 text-sm font-bold text-(--color-ink) hover:border-[#827157]`}
             onClick={() => setLocaleOpen((open) => !open)}
           >
+            <LanguageIcon className="h-4 w-4" aria-hidden="true" />
             {LOCALE_OPTIONS.find((o) => o.key === settings.locale)?.label}
             <span
               aria-hidden="true"
